@@ -1,0 +1,88 @@
+[% PROCESS pageheader.html %]
+
+<script type="text/javascript" language="javascript">
+function KP_collapseMacros() {
+	var i = 0;
+	while ( 1 ) {
+		var o = document.getElementById("KP_s-"+i);
+		if ( o == null ) { return; }
+		o.style.display = "none";
+		++i;
+	}
+}
+function KP_showButton(index,options) {
+        var buttonNumber = options[index].value;
+	KP_collapseMacros();
+	var s = document.getElementById("KP_save");
+	s.style.display = "";
+	var o = document.getElementById("KP_s-"+buttonNumber);
+	if ( o == null ) { return; }
+	o.style.display = "";
+}
+var p = document.getElementById("KP_macro_name");
+if ( p != null ) {
+	p.selectedIndex = 0;
+}
+</script>
+
+<!-- the table is wrapped in a FORM to allow actions -->
+<form action="global.html" method="POST">
+
+[% kidsplay.message %]
+
+<!-- hidden vars to carry with Save requests -->
+<input type="hidden" name="pageAntiCSRFToken" value="[% pageAntiCSRFToken %]" />
+
+<!-- list of possible macros -->
+<!-- TODO: changing selected value updates page -->
+<select name="KP_macro_name" onChange="javascript:KP_showButton(selectedIndex,options);">
+<option value="-1">[% "SELECT_ITEM" | string %]</option>
+[% kidsplay.macrooptions %]
+</select>
+<br />
+<!-- spans with all buttons & macros -->
+[% kidsplay.macro %]
+
+<span id="KP_save" style="display: none;">
+<input type="submit" name="KP_action" value="[% "SAVE" | string %]" />
+</span>
+
+</form>
+
+<p>Sample macros</p>
+
+<dl>
+<dt>Play a specific playlist
+<dd>power 1; mixer volume 30; playlist play PlayListName;
+<dt>Random mix from one genre
+<dd>power 1; mixer volume 30; stop; randomplaygenreselectall 0; randomplaychoosegenre GenreName 1; randomplay tracks;
+<dt>Play a specific album
+<dd>power 1; mixer volume 30; playlist play "/path/to/album/directory"
+<dt>Display a message
+<dd>show "line1:KidsPlay test" "line2:Your message here" duration:5 centered:1
+<dt>Display a large message
+<dd>show font:huge "line2:Your message here" duration:5 centered:1
+<dt>Set volume to a fixed level
+<dd>mixer volume 45;
+<br />OR
+<br />
+kidsplayvolume 45
+<dt>Increase volume by 5, but not greater than player's KidsPlay max
+<dd>kidsplayvolume +5
+<dt>Decrease volume by 5, but not less than player's KidsPlay min
+<dd>kidsplayvolume -5
+<dt>Set volume to player's KidsPlay minimum
+<dd>kidsplayvolume 0
+<dt>Toggle between two values (3 = Always Off, 0 = Headphones) for a Boom's analogOutMode pref 
+(this command currently only supports switching between two values)
+<dd>kidsplaytoggleclientpref analogOutMode 3 0
+</dl>
+
+<br />
+<br />
+<a href="/Classic/plugins/KidsPlay/html/donate.html">[% "PETERW_DONATIONS_APPRECIATED" | string %]</a>
+<br />
+<br />
+
+[% PROCESS pagefooter.html %]
+

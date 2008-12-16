@@ -1,0 +1,31 @@
+[% PROCESS settings/header.html %]
+
+	<div class="settingSection">
+
+		<div class="groupHead">[% "PLUGIN_KIDSPLAY_BEHAVIOR_BOOM" | string | upper %]</div>
+		<label for="code">[% "PLUGIN_KIDSPLAY_BEHAVIOR_BOOM_DESC" | string %]</label>
+		<br /><select class="stdedit" name="[% pw.pref_prefix %]behaviorBoom" id="behaviorBoomSelect">
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_NORMAL" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_NORMAL" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_NORMAL" | string %]</option>
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" | string %]</option>
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_ONLY" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_ONLY" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_ONLY" | string %]</option>
+			</select>
+		<br />
+
+		<div class="groupHead">[% "PLUGIN_KIDSPLAY_BEHAVIOR_JVC" | string | upper %]</div>
+		<label for="code">[% "PLUGIN_KIDSPLAY_BEHAVIOR_JVC_DESC" | string %]</label>
+		<br /><select class="stdedit" name="[% pw.pref_prefix %]behaviorJVC" id="behaviorJVCSelect">
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_NORMAL" [% IF prefs.behaviorJVC == "PLUGIN_KIDSPLAY_CHOICE_NORMAL" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_NORMAL" | string %]</option>
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" [% IF prefs.behaviorJVC == "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" | string %]</option>
+                        <option value="PLUGIN_KIDSPLAY_CHOICE_ONLY" [% IF prefs.behaviorJVC == "PLUGIN_KIDSPLAY_CHOICE_ONLY" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_ONLY" | string %]</option>
+			</select>
+		<br />
+
+		<div class="groupHead">[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS" | string | upper %]</div>
+		<label for="code">[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS_DESC" | string %]</label>
+		<br />[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS_MIN" | string %]<input type="text" class="stdedit" name="[% pw.pref_prefix %]minVolume" value="[% prefs.minVolume %]">
+		<br />[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS_MAX" | string %]<input type="text" class="stdedit" name="[% pw.pref_prefix %]maxVolume" value="[% prefs.maxVolume %]">
+		<br />
+
+	</div>
+
+[% PROCESS settings/footer.html %]

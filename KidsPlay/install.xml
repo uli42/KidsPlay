@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<extension>
+	<id>KidsPlay.0.7a9</id>
+        <name>PLUGIN_KIDSPLAY</name>
+        <module>Plugins::KidsPlay::Plugin</module>
+        <version>0.7a9</version>
+        <description>PLUGIN_KIDSPLAY_DESC</description>
+        <creator>Peter Watkins</creator>
+        <email>peterw@tux.org</email>
+	<defaultState>enabled</defaultState>
+        <homepageURL>http://www.tux.org/~peterw/#slim</homepageURL>
+	<optionsURL>plugins/KidsPlay/settings/basic.html</optionsURL>
+	<type>2</type><!-- type=extension -->
+        <targetApplication>
+  	        <id>KidsPlay.0.7a9</id>
+                <minVersion>7.0a</minVersion>
+                <maxVersion>*</maxVersion>
+        </targetApplication>
+</extension>

@@ -1,0 +1,77 @@
+PLUGIN_KIDSPLAY
+	EN	KidsPlay
+
+PLUGIN_KIDSPLAY_DESC
+	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom 1-6 preset buttons.
+
+DEBUG_PLUGIN_KIDSPLAY
+	EN	KidsPlay
+
+PLUGIN_KIDSPLAY_PLAYER_SETTINGS
+	EN	KidsPlay player settings
+
+PLUGIN_KIDSPLAY_BASIC_SETTINGS
+	EN	KidsPlay global settings
+
+PLUGIN_KIDSPLAY_BEHAVIOR_BOOM
+	EN	Boom preset button behavior
+
+PLUGIN_KIDSPLAY_BEHAVIOR_BOOM_DESC
+	EN	How KidsPlay should deal with users pressing the 1-6 preset buttons on a Squeezebox Boom
+
+PLUGIN_KIDSPLAY_BEHAVIOR_JVC
+	EN	JVC DVD remote control button behavior
+
+PLUGIN_KIDSPLAY_BEHAVIOR_JVC_DESC
+	EN	How KidsPlay should deal with users pressing buttons on a remote control sending JVC DVD codes
+
+PLUGIN_KIDSPLAY_CHOICE_ONLY
+	EN	KidsPlay routine or no action
+
+PLUGIN_KIDSPLAY_CHOICE_OVERRIDE
+	EN	KidsPlay routine or normal action
+
+PLUGIN_KIDSPLAY_CHOICE_NORMAL
+	EN	Normal behavior (no KidsPlay macros)
+
+KIDSPLAY_BUTTON
+	EN	Button
+
+KIDSPLAY_PRESET_BUTTON
+	EN	Preset button
+
+KIDSPLAY_LEFT
+	EN	Left arrow
+
+KIDSPLAY_RIGHT
+	EN	Right arrow
+
+KIDSPLAY_SIZE
+	EN	Size
+
+KIDSPLAY_MACROS_UPDATED
+	EN	 macros updated
+
+PLUGIN_KIDSPLAY_VOLUME_LIMITS
+	EN	Volume limits for 'kidsplayvolume'
+
+PLUGIN_KIDSPLAY_VOLUME_LIMITS_DESC
+	EN	KidsPlay provides a CLI command 'kidsplayvolume' that can be used to change the client volume. This CLI command respects configurable per-player minimum and maximum volumes, which you can set here. 0 is mute, 100 is full volume.
+
+PLUGIN_KIDSPLAY_VOLUME_LIMITS_MIN
+	EN	Minimum volume
+
+PLUGIN_KIDSPLAY_VOLUME_LIMITS_MAX
+	EN	Maximum volume
+
+KIDSPLAY_PRE_MACRO
+	EN	Commands to run before any others
+
+KIDSPLAY_POST_MACRO
+	EN	Commands to run after any others
+
+PETERW_DONATIONS_APPRECIATED
+	EN	Donations appreciated
+
+PETERW_DONATION_PAGE_TEXT
+	EN	<h2>Donations</h2> <p>Over the years I have spent many hours developing, improving, and maintaining my SqueezeCenter plugins. They're not perfect, but I hope you find them valuable, welcome your <a href="mailto:peterw@tux.org">feedback</a>, and appreciate your donations. You can use the button below to donate any amount of your choosing via Paypal.</p> <p>Thank you,<br /><br />-Peter</p>
