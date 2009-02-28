@@ -10,6 +10,12 @@ function KP_collapseMacros() {
 		++i;
 	}
 }
+function KP_toggleVisibility(domId) {
+	var o = document.getElementById(domId);
+	if ( o == null ) { return; }
+	if ( o.style.display == "none" ) { o.style.display = ""; }
+	else { o.style.display = "none"; }
+}
 function KP_showButton(index,options) {
         var buttonNumber = options[index].value;
 	KP_collapseMacros();
@@ -49,15 +55,24 @@ if ( p != null ) {
 
 </form>
 
-<p>Sample macros</p>
+<p>Macros are sets of CLI commands separated by semicolons. For a full list of
+"core" SqueezeCenter CLI commands, see
+<a href="/html/docs/cli-api.html#Supported Commands" target="_blank" title="(opens in new window)">the
+online documentation</a>. <em>Note:</em> you do <b>not</b> need to include the
+playerid for most commands that begin with a playerid. For instance, the documentation
+says to turn a specific player on you would use "04:20:00:12:23:45 power 1" but
+for KidsPLay you need only use "power 1".
+</p>
 
+<p><a href="#" onClick="javascript:KP_toggleVisibility('KP_samples');">Sample macros</a></p>
+<span id="KP_samples" style="display: none;">
 <dl>
 <dt>Play a specific playlist
-<dd>power 1; mixer volume 30; playlist play PlayListName;
+<dd>power 1; stop; playlist clear; mixer volume 30; playlist play PlayListName;
 <dt>Random mix from one genre
-<dd>power 1; mixer volume 30; stop; randomplaygenreselectall 0; randomplaychoosegenre GenreName 1; randomplay tracks;
+<dd>power 1; stop; playlist clear; mixer volume 30; randomplaygenreselectall 0; randomplaychoosegenre GenreName 1; randomplay tracks;
 <dt>Play a specific album
-<dd>power 1; mixer volume 30; playlist play "/path/to/album/directory"
+<dd>power 1; stop; playlist clear; mixer volume 30; playlist play "/path/to/album/directory"
 <dt>Display a message
 <dd>show "line1:KidsPlay test" "line2:Your message here" duration:5 centered:1
 <dt>Display a large message
@@ -77,6 +92,7 @@ kidsplayvolume 45
 (this command currently only supports switching between two values)
 <dd>kidsplaytoggleclientpref analogOutMode 3 0
 </dl>
+</span>
 
 <br />
 <br />
