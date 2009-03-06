@@ -9,7 +9,6 @@ use strict;
 package Plugins::KidsPlay::GlobalSettings;
 
 use Plugins::KidsPlay::Plugin;
-use CGI;
 use Slim::Utils::Strings qw (string);
 use Slim::Utils::Prefs;
 use JSON::XS::VersionOneAndTwo;

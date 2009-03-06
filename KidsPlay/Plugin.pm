@@ -1,4 +1,4 @@
-# KidsPlay copyright (c) 2008 by Peter Watkins (peterw@tux.org) 
+# KidsPlay copyright (c) 2008-2009 by Peter Watkins (peterw@tux.org) 
 # All Rights Reserved
 #
 # This program is free software; you can redistribute it and/or
@@ -234,7 +234,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.20 $';
+	my $RcsVersion = '$Revision: 1.21 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }

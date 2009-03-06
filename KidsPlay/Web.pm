@@ -1,4 +1,4 @@
-# KidsPlay (c) 2008 by Peter Watkins (peterw@tux.org)
+# KidsPlay (c) 2008-2009 by Peter Watkins (peterw@tux.org)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License,
@@ -9,7 +9,6 @@ use strict;
 package Plugins::KidsPlay::Web;
 
 use Plugins::KidsPlay::Plugin;
-use CGI;
 use Slim::Utils::Strings qw (string);
 use Slim::Utils::Prefs;
 use JSON::XS::VersionOneAndTwo;
@@ -60,11 +59,11 @@ sub handleWeb {
 	foreach my $type ( 'Boom', 'JVC', 'KP' ) {
 		my $hashPtr = Plugins::KidsPlay::Plugin::getButtonHash($type);
 		foreach my $k (sort keys %$hashPtr) {
-			$params->{'kidsplay'}->{'macrooptions'} .= "<option value=\"$c\">$type - ".CGI::escapeHTML($hashPtr->{$k})."</option>\n";
-			$params->{'kidsplay'}->{'macro'} .= "<span id=\"KP_s-$c\" style=\"display: none;\">$type - ".CGI::escapeHTML($hashPtr->{$k})."\n";
+			$params->{'kidsplay'}->{'macrooptions'} .= "<option value=\"$c\">$type - ".&escape_html($hashPtr->{$k})."</option>\n";
+			$params->{'kidsplay'}->{'macro'} .= "<span id=\"KP_s-$c\" style=\"display: none;\">$type - ".&escape_html($hashPtr->{$k})."\n";
 			$params->{'kidsplay'}->{'macro'} .= "<br /><textarea cols=\"60\" rows=\"5\" id=\"m-$type-$k\" name=\"m-$type-$k\">";
 			my $thisMacro = $kpPrefs->get("macro-${type}-$k");
-			$params->{'kidsplay'}->{'macro'} .= CGI::escapeHTML($thisMacro);
+			$params->{'kidsplay'}->{'macro'} .= &escape_html($thisMacro);
 			$params->{'kidsplay'}->{'macro'} .= "</textarea>\n";
 			$params->{'kidsplay'}->{'macro'} .= "<br /></span>\n";
 			++$c;
