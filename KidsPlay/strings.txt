@@ -5,7 +5,7 @@ PLUGIN_KIDSPLAY_DESC
 	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom 1-6 preset buttons.
 
 PLUGIN_KIDSPLAY_REPO_DESC
-	EN	2.1.10 - remove CGI.pm dependency for newer releases
+	EN	2.1.11 - fix web UI; 2.1.10 - remove CGI.pm dependency for newer releases
 
 DEBUG_PLUGIN_KIDSPLAY
 	EN	KidsPlay

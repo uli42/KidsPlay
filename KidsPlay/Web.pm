@@ -78,6 +78,17 @@ sub handleWeb {
 	#return $rc;
 }
 
+# improved from Slim/Utils/MemoryUsage
+sub escape_html($) {
+	my $str = shift;
+	$str =~ s/&/&amp;/g;
+	$str =~ s/</&lt;/g;
+	$str =~ s/>/&gt;/g;
+	$str =~ s/\"/&quot;/g;
+	$str =~ s/\'/&apos;/g;
+	return $str;
+}
+
 1;
 
 

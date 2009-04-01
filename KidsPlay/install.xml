@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 
 <extension>
-<id>KidsPlay.2.1.10</id>
+<id>KidsPlay.2.1.11</id>
         <name>PLUGIN_KIDSPLAY</name>
         <module>Plugins::KidsPlay::Plugin</module>
-        <version>2.1.10</version>
+        <version>2.1.11</version>
         <description>PLUGIN_KIDSPLAY_DESC</description>
         <creator>Peter Watkins</creator>
         <email>peterw@tux.org</email>
