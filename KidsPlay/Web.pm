@@ -38,7 +38,7 @@ sub handleWeb {
 		# check current pref value, set() if diff
 		my $u = 0;
 		foreach my $k (keys %$params) {
-			if ( $k =~ m/^m\-(Boom|JVC|KP)\-(.*)$/ ) {
+			if ( $k =~ m/^m\-(Boom|Receiver|JVC|KP)\-(.*)$/ ) {
 				my ($type,$button) = ($1,$2);
 				my $thisMacro = $kpPrefs->get("macro-${type}-$button");
 				if ( $thisMacro ne $params->{$k} ) {
@@ -56,7 +56,7 @@ sub handleWeb {
 	$params->{'kidsplay'}->{'macrooptions'} = '';
 	$params->{'kidsplay'}->{'macro'} = '';
 	my $c = 0;
-	foreach my $type ( 'Boom', 'JVC', 'KP' ) {
+	foreach my $type ( 'Boom', 'Receiver', 'JVC', 'KP' ) {
 		my $hashPtr = Plugins::KidsPlay::Plugin::getButtonHash($type);
 		foreach my $k (sort keys %$hashPtr) {
 			$params->{'kidsplay'}->{'macrooptions'} .= "<option value=\"$c\">$type - ".&escape_html($hashPtr->{$k})."</option>\n";

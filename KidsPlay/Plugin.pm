@@ -97,6 +97,9 @@ my %supportedButtons = (
 		'preset_5' => string('KIDSPLAY_PRESET_BUTTON').' 5',
 		'preset_6' => string('KIDSPLAY_PRESET_BUTTON').' 6',
 	},
+	'Receiver' => {
+		'pause' => string('KIDSPLAY_BUTTON'),
+	},
 );
 	
 # initialize
@@ -119,6 +122,8 @@ sub initPlugin {
 		Slim::Web::HTTP::protectCommand('kidsplayvolume');
 		Slim::Control::Request::addDispatch(['kidsplaytoggleclientpref','_prefname','_val1','_val2'], [1, 0, 0, \&toggleclientprefCLI]);
 		Slim::Web::HTTP::protectCommand('kidsplaytoggleclientpref');
+		Slim::Control::Request::addDispatch(['kidsplaymacro','_type', '_name', '_runall'], [1, 0, 0, \&macroCLI]);
+		Slim::Web::HTTP::protectCommand('kidsplaymacro');
 	}
 	# note that we should act
 	$pluginEnabled = 1;
@@ -151,6 +156,28 @@ sub toggleclientprefCLI {
 		$p->client($client)->set($name,$val1);
 	} else {
 		$p->client($client)->set($name,$val2);
+	}
+	$request->setStatusDone();
+}
+
+sub macroCLI {
+        my $request = shift;
+	# check this is the correct command.
+	if ($request->isNotCommand([['kidsplaymacro']])) {
+		$request->setStatusBadDispatch();
+		return;
+	}
+	# get the parameters
+	my $client = $request->client();
+	my $type = $request->getParam('_type');
+	my $name = $request->getParam('_name');
+	my $runall = $request->getParam('_runall');
+	# initialize client prefs
+	&initClientPrefs($client);
+	my $macro = &getMacro($name,$type);
+	if ( $macro =~ m/\S/ ) {
+		$log->debug("we have a macro for $type - $name ; executing");
+		&runMacro($client,$type,$name,$macro,$runall);
 	}
 	$request->setStatusDone();
 }
@@ -255,15 +282,18 @@ sub KidsPlay_irCommand {
 	}
 	my $id = $client->id();
 	my $codename = Slim::Hardware::IR::lookupCodeBytes($client,$ircode);
-	# remove down (Boom macros are unqualified & we only act on down)
+	# remove down (Boom & Receiver macros are unqualified & we only act on down)
 	$codename =~ s/\.down$//;
 	my $type = undef;
 	# following IFF jvc code:
 	# Boom presets: 00010020-00010025 down, 00020020-00020025 up
+	# Receiver: up=00020017, down=00010017
 	if ( $ircode =~ m/^0000/) {
 		$type = 'JVC';
 	} elsif ( $ircode =~ m/^000[12]002[0-5]/) {
 		$type = 'Boom';
+	} elsif ( ($ircode =~ m/^000[12]0017/) && $client->isa( "Slim::Player::Receiver") ) {
+		$type = 'Receiver';
 	}
 	# dev hack
 	if ( defined($ENV{'PRETEND_IR_TYPE'}) && ($ENV{'PRETEND_IR_TYPE'} ne '') ) { 
@@ -290,19 +320,7 @@ sub KidsPlay_irCommand {
 		$log->debug("we have a macro for $type - $codename ; last execute $then last code $what now $now");
 		$done = 1;
 		if ( (!defined($then)) || (defined($what) && ($what ne $codename)) || (($now - $then) > $wait) ) {
-			# pre-macro?
-			my $macro2 = &getMacro('pre','KP');
-			$macro2 =~ s/\;\s*$//s;
-			if ( $macro2 =~ m/\S/ ) {
-				&executeKidsPlay($client,'KP','pre',$macro2);
-			}
-			&executeKidsPlay($client,$type,$codename,$macro);
-			# post-macro?
-			$macro2 = &getMacro('post','KP');
-			$macro2 =~ s/\;\s*$//s;
-			if ( $macro2 =~ m/\S/ ) {
-				&executeKidsPlay($client,'KP','post',$macro2);
-			}
+			&runMacro($client,$type,$codename,$macro,1);
 		}
 	}
 	$lastIRCode{$id} = $codename;
@@ -312,6 +330,27 @@ sub KidsPlay_irCommand {
 		return; 
 	}
 	return &$originalIRCommand(@args);
+}
+
+sub runMacro($$$$$) {
+	my($client,$type,$codename,$macro,$runPrePost) = @_;
+	# pre-macro?
+	if ( $runPrePost ) {
+		my $macro2 = &getMacro('pre','KP');
+		$macro2 =~ s/\;\s*$//s;
+		if ( $macro2 =~ m/\S/ ) {
+			&executeKidsPlay($client,'KP','pre',$macro2);
+		}
+	}
+	&executeKidsPlay($client,$type,$codename,$macro);
+	if ( $runPrePost ) {
+		# post-macro?
+		my $macro2 = &getMacro('post','KP');
+		$macro2 =~ s/\;\s*$//s;
+		if ( $macro2 =~ m/\S/ ) {
+			&executeKidsPlay($client,'KP','post',$macro2);
+		}
+	}
 }
 
 sub getMacro($$) {
@@ -328,6 +367,10 @@ sub initPrefs(){
 	if ( (!defined($waitJVC)) || ($waitJVC eq '') ) {
 		$prefs->set("waitJVC",$minWait);
 		$prefs->set("waitBoom",0);
+	}
+	my $waitReceiver = $prefs->get("waitReceiver");
+	if ( (!defined($waitReceiver)) || ($waitReceiver eq '') ) {
+		$prefs->set("waitReceiver",0);
 	}
 }
 
@@ -386,6 +429,8 @@ sub behaviorPref($$) {
 	my $client = shift;
 	my $type = shift;
 	&initClientPrefs($client);
+	# Receiver gets Boom behavior
+	if ( $type eq 'Receiver' ) { $type = 'Boom'; }
 	return $prefs->client($client)->get("behavior${type}");
 }	
 

@@ -5,7 +5,7 @@ PLUGIN_KIDSPLAY_DESC
 	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom 1-6 preset buttons.
 
 PLUGIN_KIDSPLAY_REPO_DESC
-	EN	2.1.11 - fix web UI; 2.1.10 - remove CGI.pm dependency for newer releases
+	EN	2.1.12: can now redefine Receiver button; 2.1.11: fix web UI; 2.1.10: remove CGI.pm dependency for newer releases
 
 DEBUG_PLUGIN_KIDSPLAY
 	EN	KidsPlay
@@ -17,10 +17,10 @@ PLUGIN_KIDSPLAY_BASIC_SETTINGS
 	EN	KidsPlay global settings
 
 PLUGIN_KIDSPLAY_BEHAVIOR_BOOM
-	EN	Boom preset button behavior
+	EN	Boom preset and Receiver button behavior
 
 PLUGIN_KIDSPLAY_BEHAVIOR_BOOM_DESC
-	EN	How KidsPlay should deal with users pressing the 1-6 preset buttons on a Squeezebox Boom
+	EN	How KidsPlay should deal with users pressing the 1-6 preset buttons on a Squeezebox Boom, or the lone button on a Squeezebox Receiver
 
 PLUGIN_KIDSPLAY_BEHAVIOR_JVC
 	EN	JVC DVD remote control button behavior
