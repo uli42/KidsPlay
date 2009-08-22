@@ -59,9 +59,16 @@ if ( p != null ) {
 "core" SqueezeCenter CLI commands, see
 <a href="/html/docs/cli-api.html#Supported Commands" target="_blank" title="(opens in new window)">the
 online documentation</a>. <em>Note:</em> you do <b>not</b> need to include the
-playerid for most commands that begin with a playerid. For instance, the documentation
-says to turn a specific player on you would use "04:20:00:12:23:45 power 1" but
-for KidsPLay you need only use "power 1".
+playerid for commands that begin with a playerid. For instance, the documentation
+says to turn a specific player on you would use '04:20:00:12:23:45 power 1' but
+for KidsPLay you need only use 'power 1'. If you want to specify a particular
+player, insert either the player MAC/ID plus a colon or the name you assigned
+to the player plus a colon before the command, e.g. 
+'04:20:00:67:89:9a: power 1' or 'Kitchen: power 1'.  If you want to have the
+same command run on every player, insert 'ALL:' before the command, e.g.
+'ALL: power 1'. To have the command run on all players <b>except</b> the
+player where you pressed the button, insert 'OTHERS:', e.g. 
+'OTHERS: power 1'.
 </p>
 
 <p><a href="#" onClick="javascript:KP_toggleVisibility('KP_samples');">Sample macros</a></p>
@@ -91,6 +98,12 @@ kidsplayvolume 45
 <dt>Toggle between two values (3 = Always Off, 0 = Headphones) for a Boom's analogOutMode pref 
 (this command currently only supports switching between two values)
 <dd>kidsplaytoggleclientpref analogOutMode 3 0
+<dt>Turn the player named "Living Room" off (note the space and quotation marks)</dt>
+<dd>"Living Room:" power 0</dd>
+<dt>Turn all players off</dt>
+<dd>ALL: power 0</dd>
+<dt>Turn all <b>other</b> players off but leave this one alone</dt>
+<dd>OTHERS: power 0</dd>
 </dl>
 </span>
 

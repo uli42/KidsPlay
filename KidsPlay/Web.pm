@@ -43,6 +43,7 @@ sub handleWeb {
 				my $thisMacro = $kpPrefs->get("macro-${type}-$button");
 				if ( $thisMacro ne $params->{$k} ) {
 					$kpPrefs->set("macro-${type}-$button",$params->{$k});
+					Slim::Control::Request::notifyFromArray(undef, ['kidsplaymacroset', $type, $button, $params->{$k}]);
 					++$u;
 				}
 			}

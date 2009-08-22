@@ -124,6 +124,8 @@ sub initPlugin {
 		Slim::Web::HTTP::protectCommand('kidsplaytoggleclientpref');
 		Slim::Control::Request::addDispatch(['kidsplaymacro','_type', '_name', '_runall'], [1, 0, 0, \&macroCLI]);
 		Slim::Web::HTTP::protectCommand('kidsplaymacro');
+		Slim::Control::Request::addDispatch(['kidsplaydumpmacros'], [0, 0, 0, \&macroDumpCLI]);
+		Slim::Control::Request::addDispatch(['kidsplaymacroset'], [0, 0, 0, undef]);
 	}
 	# note that we should act
 	$pluginEnabled = 1;
@@ -261,7 +263,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.21 $';
+	my $RcsVersion = '$Revision: 1.26 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -414,8 +416,64 @@ sub processCommandFromQueue() {
 		my @cmdArgs = @{$cmdPtr};
 		my $client = pop @cmdArgs;
 		my $id = $client->id();
-		$log->info("for client $id, execute \"".join('" "',@cmdArgs)."\"");
-		Slim::Control::Request::executeRequest($client, \@cmdArgs, undef, undef);
+		my $for = '';
+		# different client?
+		my $run = 1;
+		if ( (scalar(@cmdArgs) > 1) && ($cmdArgs[0] =~ m/^(.{1,}):$/) ) {
+			my $which = $1;
+			# *all* clients ( "ALL:" )
+			if ( ($which eq 'ALL') || ($which eq 'OTHERS') ) {
+				push @cmdArgs, $client;
+				my $avoid = '';
+				if ( $which eq 'OTHERS' ) {
+					$avoid = $id;
+				}
+				# remove 'ALL:' or 'OTHERS:' (or specific ID)
+				shift @cmdArgs;
+				foreach my $p ( Slim::Player::Client::clients() ) {
+					my $n = $p->name();
+					my $i = $p->id();
+					if ( ($n ne 'ALL') && ($n ne 'OTHERS') && ($i ne $avoid) ) {
+						# remove last client obj
+						pop @cmdArgs;
+						$log->info("for client $id, prepare to execute \"".join('" "',@cmdArgs)."\" for $i/$n");
+						# add this player's object
+						push @cmdArgs, $p;
+						# insert this as the next command
+						splice @commandQueue, 0, 0, \@cmdArgs;
+					}
+				}
+				return 1;
+			}
+			# by MAC address ( "00:04:20:11:22:33:" )
+			elsif ( $which =~ m/^[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$/i ) {
+	 			my $c2 = Slim::Player::Client::getClient($which);
+				if ( defined($c2) ) {
+					shift @cmdArgs;
+					# diff client!
+					$for = " for client $which";
+					$client = $c2;
+				} else {
+					$run = 0;
+				}
+			}
+			# by name? ( "Player Name:" )
+			else {
+				my $c2 = &getClientByName($which);
+				if (defined($c2) ) {
+					shift @cmdArgs;
+					# diff client!
+					$for = " for client \"$which\"";
+					$client = $c2;
+				} else {
+					$run = 0;
+				}
+			}
+		}
+		if ( $run ) {
+			$log->info("for client $id, execute \"".join('" "',@cmdArgs)."\"${for}");
+			Slim::Control::Request::executeRequest($client, \@cmdArgs, undef, undef);
+		}
 	}
 	# return 1 if there are more items to process
 	if ( scalar(@commandQueue) > 0 ) {
@@ -457,6 +515,38 @@ sub getButtonHash($) {
 	my $type = shift;
 	my $hashPtr = $supportedButtons{$type};
 	return $hashPtr;
+}
+
+sub dumpMacros() {
+	foreach my $type (keys %supportedButtons) {
+		my $infoHashPtr = &getButtonHash($type);
+		foreach my $button (keys %$infoHashPtr) {
+			my $thisMacro = $prefs->get("macro-${type}-$button");
+			Slim::Control::Request::notifyFromArray(undef, ['kidsplaymacroset', $type, $button, $thisMacro])
+		}
+	}
+}
+
+sub macroDumpCLI {
+        my $request = shift;
+	# check this is the correct command.
+	if ($request->isNotCommand([['kidsplaydumpmacros']])) {
+		$request->setStatusBadDispatch();
+		return;
+	}
+	&dumpMacros();
+	$request->setStatusDone();
+}
+
+sub getClientByName($) {
+	my $name = shift;
+	my @players = Slim::Player::Client::clients();
+	foreach my $client ( @players ) {
+		if ( defined($client->name()) && ($name eq $client->name()) ) {
+			return $client;
+		}
+	}
+	return undef;
 }
 
 1;
