@@ -23,7 +23,10 @@ sub needsClient {
 }
 
 sub name {
-	return Slim::Web::HTTP::protectName('PLUGIN_KIDSPLAY_BASIC_SETTINGS');
+	if ( substr($::VERSION,0,3) lt 7.4 ) {
+		return Slim::Web::HTTP::protectName('PLUGIN_KIDSPLAY_BASIC_SETTINGS');
+	}
+	return Slim::Web::HTTP::CSRF->protectName('PLUGIN_KIDSPLAY_BASIC_SETTINGS');
 }
 
 sub page {

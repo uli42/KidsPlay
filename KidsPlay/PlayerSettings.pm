@@ -21,12 +21,26 @@ sub needsClient {
 	return 1;
 }
 
+# only for clients that send IR to the server (will open up once there's
+# a SqueezePlay Lua applet to run on SP players)
+sub validFor {
+	my $class = shift;
+	my $client = shift;
+	return (! $client->isa("Slim::Player::SqueezePlay") );
+}
+
 sub name {
-	return Slim::Web::HTTP::protectName('PLUGIN_KIDSPLAY_PLAYER_SETTINGS');
+        if ( substr($::VERSION,0,3) lt 7.4 ) {
+                return Slim::Web::HTTP::protectName('PLUGIN_KIDSPLAY_PLAYER_SETTINGS');
+        }
+        return Slim::Web::HTTP::CSRF->protectName('PLUGIN_KIDSPLAY_PLAYER_SETTINGS');
 }
 
 sub page {
-	return Slim::Web::HTTP::protectURI('plugins/KidsPlay/settings/player.html');
+        if ( substr($::VERSION,0,3) lt 7.4 ) {
+		return Slim::Web::HTTP::protectURI('plugins/KidsPlay/settings/player.html');
+        }
+        return Slim::Web::HTTP::CSRF->protectURI('plugins/KidsPlay/settings/player.html');
 }
 
 sub prefs {

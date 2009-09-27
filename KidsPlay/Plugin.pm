@@ -13,9 +13,6 @@ use Slim::Control::Request;
 use Slim::Hardware::IR;
 use Slim::Utils::Strings qw (string);
 use Slim::Utils::Prefs;
-use Plugins::KidsPlay::PlayerSettings;
-use Plugins::KidsPlay::GlobalSettings;
-use Plugins::KidsPlay::Web;
 
 # ---------------------- settings ----------------------------
 my $minWait = 2.5;	# don't act if 'ir' command fired less than $minWait seconds after last command
@@ -108,24 +105,39 @@ sub initPlugin {
 		# wait a few seconds to register hooks to better ensure that we wrap
 		# the IR and button commands last
 		Slim::Utils::Timers::setTimer('moot', (Time::HiRes::time() + 3), \&registerHooks);
-		# player settings
-		Plugins::KidsPlay::PlayerSettings->new();
-		# global settings (just a redir)
-		Plugins::KidsPlay::GlobalSettings->new();
-		# the real global settings page
-		Slim::Web::HTTP::addPageFunction("plugins/KidsPlay/settings/global.html", \&Plugins::KidsPlay::Web::handleWeb);
-		Slim::Web::HTTP::protect('plugins\/KidsPlay\/settings\/global\.html\?.*\bKP_action\=');
 		# init prefs
 		&initPrefs();
 		# register a CLI command
 		Slim::Control::Request::addDispatch(['kidsplayvolume','_delta'], [1, 0, 0, \&volumeCLI]);
-		Slim::Web::HTTP::protectCommand('kidsplayvolume');
 		Slim::Control::Request::addDispatch(['kidsplaytoggleclientpref','_prefname','_val1','_val2'], [1, 0, 0, \&toggleclientprefCLI]);
-		Slim::Web::HTTP::protectCommand('kidsplaytoggleclientpref');
 		Slim::Control::Request::addDispatch(['kidsplaymacro','_type', '_name', '_runall'], [1, 0, 0, \&macroCLI]);
-		Slim::Web::HTTP::protectCommand('kidsplaymacro');
 		Slim::Control::Request::addDispatch(['kidsplaydumpmacros'], [0, 0, 0, \&macroDumpCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaymacroset'], [0, 0, 0, undef]);
+		if ( substr($::VERSION,0,3) lt 7.4 ) {
+			Slim::Web::HTTP::protectCommand('kidsplayvolume');
+			Slim::Web::HTTP::protectCommand('kidsplaytoggleclientpref');
+			Slim::Web::HTTP::protectCommand('kidsplaymacro');
+			Slim::Web::HTTP::protect('plugins\/KidsPlay\/settings\/global\.html\?.*\bKP_action\=');
+			# the real global settings page
+			Slim::Web::HTTP::addPageFunction("plugins/KidsPlay/settings/global.html", \&Plugins::KidsPlay::Web::handleWeb);
+		} else {
+			if (!$::noweb) {
+				Slim::Web::HTTP::CSRF->protectCommand('kidsplayvolume'); 
+				Slim::Web::HTTP::CSRF->protectCommand('kidsplaytoggleclientpref'); 
+				Slim::Web::HTTP::CSRF->protectCommand('kidsplaymacro'); 
+				Slim::Web::HTTP::CSRF->protect('plugins\/KidsPlay\/settings\/global\.html\?.*\bKP_action\=');
+				Slim::Web::Pages->addPageFunction("plugins/KidsPlay/settings/global.html", \&Plugins::KidsPlay::Web::handleWeb);
+			}
+		}
+	}
+	if (!$::noweb) {
+		require Plugins::KidsPlay::PlayerSettings;
+		require Plugins::KidsPlay::GlobalSettings;
+		require Plugins::KidsPlay::Web;
+		# player settings
+		Plugins::KidsPlay::PlayerSettings->new();
+		# global settings (just a redir)
+		Plugins::KidsPlay::GlobalSettings->new();
 	}
 	# note that we should act
 	$pluginEnabled = 1;
@@ -263,13 +275,18 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.26 $';
+	my $RcsVersion = '$Revision: 1.32 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
 
 sub getDisplayName() {
 	return 'PLUGIN_KIDSPLAY';
+}
+
+sub canUseKidsPlay($) {
+	my $client = shift;
+	return (! $client->isa("Slim::Player::SqueezePlay") );
 }
 
 # our wrapper function
@@ -307,6 +324,10 @@ sub KidsPlay_irCommand {
 	}
 	my $pref = &behaviorPref($client,$type);
 	if ( $pref eq 'PLUGIN_KIDSPLAY_CHOICE_NORMAL' ) {
+		return &$originalIRCommand(@args);
+	}
+	if (! &canUseKidsPlay($client) ) {
+		$log->info($client->name()." cannot use KidsPlay");
 		return &$originalIRCommand(@args);
 	}
 	my $now = Time::HiRes::time();
