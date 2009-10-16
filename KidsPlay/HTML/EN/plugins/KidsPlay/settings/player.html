@@ -11,6 +11,7 @@
 			</select>
 		<br />
 
+		<div style="[% pw.jvc_style %]">
 		<div class="groupHead">[% "PLUGIN_KIDSPLAY_BEHAVIOR_JVC" | string | upper %]</div>
 		<label for="code">[% "PLUGIN_KIDSPLAY_BEHAVIOR_JVC_DESC" | string %]</label>
 		<br /><select class="stdedit" name="[% pw.pref_prefix %]behaviorJVC" id="behaviorJVCSelect">
@@ -19,6 +20,7 @@
                         <option value="PLUGIN_KIDSPLAY_CHOICE_ONLY" [% IF prefs.behaviorJVC == "PLUGIN_KIDSPLAY_CHOICE_ONLY" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_ONLY" | string %]</option>
 			</select>
 		<br />
+		</div>
 
 		<div class="groupHead">[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS" | string | upper %]</div>
 		<label for="code">[% "PLUGIN_KIDSPLAY_VOLUME_LIMITS_DESC" | string %]</label>

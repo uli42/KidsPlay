@@ -26,7 +26,7 @@ sub needsClient {
 sub validFor {
 	my $class = shift;
 	my $client = shift;
-	return (! $client->isa("Slim::Player::SqueezePlay") );
+	return ( (! $client->isa("Slim::Player::SqueezePlay")) || ($client->model() eq 'baby') );
 }
 
 sub name {
@@ -57,6 +57,10 @@ sub handler {
  	} else {
  		$params->{'pw'}->{'pref_prefix'} = '';
  	}
+ 	$params->{'pw'}->{'jvc_style'} = '';
+	if ( $client->model() eq 'baby' ) {
+ 		$params->{'pw'}->{'jvc_style'} = 'display: none;';
+	}
 	### BUG -- validate prefs
 	return $class->SUPER::handler($client, $params);
 }

@@ -40,6 +40,8 @@ my $pluginEnabled = 0;
 
 # need to keep track of original function
 my $originalIRCommand;
+my $originalButtonCommand;
+my $originalJiveFavoritesCommand;
 my @commandQueue;
 
 # per-client
@@ -87,6 +89,14 @@ my %supportedButtons = (
 		"volup" => string("VOLUME").' '.string('UP').' '.string('KIDSPLAY_BUTTON'),
 	},
 	'Boom' => {
+		'preset_1' => string('KIDSPLAY_PRESET_BUTTON').' 1',
+		'preset_2' => string('KIDSPLAY_PRESET_BUTTON').' 2',
+		'preset_3' => string('KIDSPLAY_PRESET_BUTTON').' 3',
+		'preset_4' => string('KIDSPLAY_PRESET_BUTTON').' 4',
+		'preset_5' => string('KIDSPLAY_PRESET_BUTTON').' 5',
+		'preset_6' => string('KIDSPLAY_PRESET_BUTTON').' 6',
+	},
+	'Radio' => {
 		'preset_1' => string('KIDSPLAY_PRESET_BUTTON').' 1',
 		'preset_2' => string('KIDSPLAY_PRESET_BUTTON').' 2',
 		'preset_3' => string('KIDSPLAY_PRESET_BUTTON').' 3',
@@ -254,6 +264,11 @@ sub registerHooks {
 		if ( (!defined($originalIRCommand)) || (ref($originalIRCommand ) ne 'CODE') ) {
 			$log->warn("problem wrapping button command!\n");
 		}
+		if ( substr($::VERSION,0,3) ge '7.4' ) {
+			# wrap button for Radio
+			$originalButtonCommand = Slim::Control::Request::addDispatch(['button','_buttoncode','_time','_orFunction'],[1, 0, 0, \&KidsPlay_buttonCommand]);
+			$originalJiveFavoritesCommand = Slim::Control::Request::addDispatch(['jivefavorites', '_cmd' ], [1, 0, 1, \&KidsPlay_jiveFavoritesCommand]);
+		}
 		$callbackSet = 1; 
 	}
 }
@@ -275,7 +290,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.32 $';
+	my $RcsVersion = '$Revision: 1.35 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -286,7 +301,80 @@ sub getDisplayName() {
 
 sub canUseKidsPlay($) {
 	my $client = shift;
-	return (! $client->isa("Slim::Player::SqueezePlay") );
+	return ( (! $client->isa("Slim::Player::SqueezePlay")) || ($client->model() eq 'baby') );
+}
+
+sub KidsPlay_jiveFavoritesCommand {
+	my @args = @_;
+	my $request = $args[0];
+	my $client = $request->client();
+	if (! defined($client) ) {
+		$log->info("no client! calling original button command");
+		return &$originalJiveFavoritesCommand(@args);
+	}
+	# not Radio? do regular thing
+	my $cmd = $request->getParam('_cmd');
+	my $key = $request->getParam('key');
+	if ( ($client->model() ne 'baby') || ($cmd ne 'set_preset') || (! defined($key))  ) {
+		$log->debug($client->name()." should use the IR handler");
+		return &$originalJiveFavoritesCommand(@args);
+	}
+	my $type = 'Radio';
+	my $pref = &behaviorPref($client,$type);
+	if ( $pref eq 'PLUGIN_KIDSPLAY_CHOICE_NORMAL' ) {
+		return &$originalJiveFavoritesCommand(@args);
+	}
+	my $buttoncode = 'preset_'.$key;
+	my $macro = &getMacro($buttoncode,$type);
+	if ( $macro =~ m/\S/ ) {
+		$log->debug("we have a macro for $type - $buttoncode");
+		&runMacro($client,$type,$buttoncode,$macro,1);
+		$request->setStatusDone();
+		return;
+	}
+	if ($pref eq 'PLUGIN_KIDSPLAY_CHOICE_ONLY') { 
+		$log->debug("no macro for $type - $buttoncode; doing nothing");
+		$request->setStatusDone();
+		return;
+	}
+	return &$originalJiveFavoritesCommand(@args);
+}
+
+
+
+sub KidsPlay_buttonCommand {
+	my @args = @_;
+	my $request = $args[0];
+	my $buttoncode = $request->getParam('_buttoncode');
+	my $client = $request->client();
+	if (! defined($client) ) {
+		$log->info("no client! calling original button command");
+		return &$originalButtonCommand(@args);
+	}
+	# not Radio? do regular thing
+	if ($client->model() ne 'baby' ) {
+		$log->debug($client->name()." should use the IR handler");
+		return &$originalButtonCommand(@args);
+	}
+	$buttoncode =~ s/\.single$//;
+	my $type = 'Radio';
+	my $pref = &behaviorPref($client,$type);
+	if ( $pref eq 'PLUGIN_KIDSPLAY_CHOICE_NORMAL' ) {
+		return &$originalButtonCommand(@args);
+	}
+	my $macro = &getMacro($buttoncode,$type);
+	if ( $macro =~ m/\S/ ) {
+		$log->debug("we have a macro for $type - $buttoncode");
+		&runMacro($client,$type,$buttoncode,$macro,1);
+		$request->setStatusDone();
+		return;
+	}
+	if ($pref eq 'PLUGIN_KIDSPLAY_CHOICE_ONLY') { 
+		$log->debug("no macro for $type - $buttoncode; doing nothing");
+		$request->setStatusDone();
+		return;
+	}
+	return &$originalButtonCommand(@args);
 }
 
 # our wrapper function
@@ -394,6 +482,10 @@ sub initPrefs(){
 	my $waitReceiver = $prefs->get("waitReceiver");
 	if ( (!defined($waitReceiver)) || ($waitReceiver eq '') ) {
 		$prefs->set("waitReceiver",0);
+	}
+	my $waitRadio= $prefs->get("waitRadio");
+	if ( (!defined($waitRadio)) || ($waitRadio eq '') ) {
+		$prefs->set("waitRadio",$minWait);
 	}
 }
 

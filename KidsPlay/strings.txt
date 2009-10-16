@@ -2,10 +2,10 @@ PLUGIN_KIDSPLAY
 	EN	KidsPlay
 
 PLUGIN_KIDSPLAY_DESC
-	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom 1-6 preset buttons or the button on a Squeezebox Receiver. (Boom, Classic, Receiver, Slimp3, Squeezebox1, Transporter)
+	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom or Radio 1-6 preset buttons or the button on a Squeezebox Receiver. (Boom, Classic, Radio, Receiver, Slimp3, Squeezebox1, Transporter)
 
 PLUGIN_KIDSPLAY_REPO_DESC
-	EN	2.2.5: don't offer options for Radio, Touch, Controller; 2.2.3: squelch deprecation warnings in 7.4, support running under -noweb (although with no way to configure the plugin); 2.2.0: can specify a specific player to run a command on, or all players, or every *other* player; 2.1.12: can now redefine Receiver button; 2.1.11: fix web UI; 2.1.10: remove CGI.pm dependency for newer releases
+	EN	2.3.0: support for remapping Radio buttons; 2.2.3: squelch deprecation warnings in 7.4, support running under -noweb (although with no way to configure the plugin); 2.2.0: can specify a specific player to run a command on, or all players, or every *other* player
 
 DEBUG_PLUGIN_KIDSPLAY
 	EN	KidsPlay
