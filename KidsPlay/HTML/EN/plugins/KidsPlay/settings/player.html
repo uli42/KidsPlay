@@ -2,14 +2,16 @@
 
 	<div class="settingSection">
 
+		<div style="[% pw.boom_style %]">
 		<div class="groupHead">[% "PLUGIN_KIDSPLAY_BEHAVIOR_BOOM" | string | upper %]</div>
-		<label for="code">[% "PLUGIN_KIDSPLAY_BEHAVIOR_BOOM_DESC" | string %]</label>
+		<label for="code">[% "PLUGIN_KIDSPLAY_BEHAVIOR_BOOM_DESC" | string %][% pw.rnote %]</label>
 		<br /><select class="stdedit" name="[% pw.pref_prefix %]behaviorBoom" id="behaviorBoomSelect">
                         <option value="PLUGIN_KIDSPLAY_CHOICE_NORMAL" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_NORMAL" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_NORMAL" | string %]</option>
                         <option value="PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_OVERRIDE" | string %]</option>
                         <option value="PLUGIN_KIDSPLAY_CHOICE_ONLY" [% IF prefs.behaviorBoom == "PLUGIN_KIDSPLAY_CHOICE_ONLY" %]selected[% END %]>[% "PLUGIN_KIDSPLAY_CHOICE_ONLY" | string %]</option>
 			</select>
 		<br />
+		</div>
 
 		<div style="[% pw.jvc_style %]">
 		<div class="groupHead">[% "PLUGIN_KIDSPLAY_BEHAVIOR_JVC" | string | upper %]</div>

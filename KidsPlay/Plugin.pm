@@ -130,6 +130,7 @@ sub initPlugin {
 			Slim::Web::HTTP::protect('plugins\/KidsPlay\/settings\/global\.html\?.*\bKP_action\=');
 			# the real global settings page
 			Slim::Web::HTTP::addPageFunction("plugins/KidsPlay/settings/global.html", \&Plugins::KidsPlay::Web::handleWeb);
+			Slim::Web::Pages->addPageLinks('plugins', { 'PLUGIN_KIDSPLAY_BASIC_SETTINGS' => 'plugins/KidsPlay/settings/global.html' });
 		} else {
 			if (!$::noweb) {
 				Slim::Web::HTTP::CSRF->protectCommand('kidsplayvolume'); 
@@ -137,6 +138,7 @@ sub initPlugin {
 				Slim::Web::HTTP::CSRF->protectCommand('kidsplaymacro'); 
 				Slim::Web::HTTP::CSRF->protect('plugins\/KidsPlay\/settings\/global\.html\?.*\bKP_action\=');
 				Slim::Web::Pages->addPageFunction("plugins/KidsPlay/settings/global.html", \&Plugins::KidsPlay::Web::handleWeb);
+				Slim::Web::Pages->addPageLinks('plugins', { 'PLUGIN_KIDSPLAY_BASIC_SETTINGS' => 'plugins/KidsPlay/settings/global.html' });
 			}
 		}
 	}
@@ -290,7 +292,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.35 $';
+	my $RcsVersion = '$Revision: 1.38 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -497,14 +499,9 @@ sub executeKidsPlay($$$) {
 	my $rc = 0;
 	if ( defined($macro) ) {
 		my $id = $client->id();
-		$macro =~ s/[\;\s]*$//s;	# strip terminal chars
-		my @ms = split(/\;/,$macro);
-		foreach my $m (@ms) {
-			$m =~ s/^\s*//;
-			$m =~ s/\s*$//;
-			my @fields = &parseFields($m);
-			push @fields, $client;
-			&addToQueue(@fields);
+		my @commands = &getCommands($client,$macro);
+		foreach my $fieldPtr (@commands) {
+			&addToQueue(@$fieldPtr);
 			$rc = 1;
 		}
 	}
@@ -527,66 +524,13 @@ sub processCommandFromQueue() {
 	if ( scalar(@commandQueue) > 0 ) {
 		my $cmdPtr = shift @commandQueue;
 		my @cmdArgs = @{$cmdPtr};
+		my $for = pop @cmdArgs;
 		my $client = pop @cmdArgs;
 		my $id = $client->id();
-		my $for = '';
-		# different client?
-		my $run = 1;
-		if ( (scalar(@cmdArgs) > 1) && ($cmdArgs[0] =~ m/^(.{1,}):$/) ) {
-			my $which = $1;
-			# *all* clients ( "ALL:" )
-			if ( ($which eq 'ALL') || ($which eq 'OTHERS') ) {
-				push @cmdArgs, $client;
-				my $avoid = '';
-				if ( $which eq 'OTHERS' ) {
-					$avoid = $id;
-				}
-				# remove 'ALL:' or 'OTHERS:' (or specific ID)
-				shift @cmdArgs;
-				foreach my $p ( Slim::Player::Client::clients() ) {
-					my $n = $p->name();
-					my $i = $p->id();
-					if ( ($n ne 'ALL') && ($n ne 'OTHERS') && ($i ne $avoid) ) {
-						# remove last client obj
-						pop @cmdArgs;
-						$log->info("for client $id, prepare to execute \"".join('" "',@cmdArgs)."\" for $i/$n");
-						# add this player's object
-						push @cmdArgs, $p;
-						# insert this as the next command
-						splice @commandQueue, 0, 0, \@cmdArgs;
-					}
-				}
-				return 1;
-			}
-			# by MAC address ( "00:04:20:11:22:33:" )
-			elsif ( $which =~ m/^[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$/i ) {
-	 			my $c2 = Slim::Player::Client::getClient($which);
-				if ( defined($c2) ) {
-					shift @cmdArgs;
-					# diff client!
-					$for = " for client $which";
-					$client = $c2;
-				} else {
-					$run = 0;
-				}
-			}
-			# by name? ( "Player Name:" )
-			else {
-				my $c2 = &getClientByName($which);
-				if (defined($c2) ) {
-					shift @cmdArgs;
-					# diff client!
-					$for = " for client \"$which\"";
-					$client = $c2;
-				} else {
-					$run = 0;
-				}
-			}
-		}
-		if ( $run ) {
-			$log->info("for client $id, execute \"".join('" "',@cmdArgs)."\"${for}");
-			Slim::Control::Request::executeRequest($client, \@cmdArgs, undef, undef);
-		}
+		my $fid = $for->id();
+		my $fname = $for->name();
+		$log->info("for client $id, execute \"".join('" "',@cmdArgs)."\" on $fid ($fname)");
+		Slim::Control::Request::executeRequest($for, \@cmdArgs, undef, undef);
 	}
 	# return 1 if there are more items to process
 	if ( scalar(@commandQueue) > 0 ) {
@@ -602,27 +546,202 @@ sub behaviorPref($$) {
 	&initClientPrefs($client);
 	# Receiver gets Boom behavior
 	if ( $type eq 'Receiver' ) { $type = 'Boom'; }
+	if ( $type eq 'Radio' ) { $type = 'Boom'; }
 	return $prefs->client($client)->get("behavior${type}");
 }	
 
-# sub to handle quoted fields, e.g. 'playlist play "/path/with some spaces/playlist.m3u"'
-sub parseFields($) {
-        my $in = shift;
-	my @qs = split(/\"/,$in);
-	my @cooked = ();
-	for (my $q = 0; $q < scalar(@qs); ++$q) {
-		if ( ($q % 2) == 0 ) {
-			# not quoted
-			$qs[$q] =~ s/^\s*//;
-			$qs[$q] =~ s/\s*$//;
-			push @cooked, split(/\s/,$qs[$q]);
+# --------------------------------------------- macro-parsing routines -------------------------------
+
+# input:
+# 	calling $client
+# 	string representing the macro, e.g. "OTHERS: power 0; power 1; mixer volume 10"
+#
+# output:
+# 	array of command arrays, each of which ends with two client refs (issuing client, then context client)
+# 	e.g. if the above macro was invoked by the "Bedroom" client against a server that also had Den and
+# 	Kitchen players, getCommands() would return an array like
+# 		[
+# 			['power','0',$bedroomClient,$denClient],
+# 			['power','0',$bedroomClient,$kitchenClient],
+# 			['power','1',$bedroomClient,$bedroomClient],
+# 			['mixer','volume','10',$bedroomClient,$bedroomClient],
+# 		]
+#
+sub getCommands($$) {
+	my $client = shift;
+	my $macro = shift;
+	$macro =~ s/[\;\s]*$//s;	# strip terminal chars
+	my @commands;
+	my @ms = &splitLines($macro,";");
+	foreach my $m (@ms) {
+		my @fields = &parseFields($m);
+		my @forWhom = &makePlayerList($client,\@fields);
+		push @fields, $client;	# who invoked
+		if ( scalar(@forWhom) > 0 )  {
+			shift @fields;		# first field is the location indicator, not a command
+			foreach my $p (@forWhom) {
+				my @f = @fields;
+				push @f, $p;	# context to run in
+				push @commands, \@f;
+			}
 		} else {
-			# quoted
-			push @cooked, $qs[$q];
+			# the "for" client is also this client
+			push @fields, $client;
+			push @commands, \@fields;
 		}
 	}
+	return @commands;
+}
+
+sub makePlayerList($$) {
+	my $client = shift;
+	my $cmdArgsPtr = shift;
+	my @cmdArgs = @$cmdArgsPtr;
+	my @clients = ();
+	if ( (scalar(@cmdArgs) > 1) && (defined($client) && ( $client->isa("Slim::Player::Player") )) && (($cmdArgs[0] =~ m/^(.{1,}):$/) || ($cmdArgs[0] =~ m/^[0-9a-f]{2}\:[0-9a-f]{2}\:[0-9a-f]{2}\:[0-9a-f]{2}\:[0-9a-f]{2}\:[0-9a-f]{2}$/i))  ) {
+		my $id = $client->id();
+		my $which = $cmdArgs[0];
+		shift @cmdArgs;
+		$which =~ s/:$//;
+		# *all* clients ( "ALL:" )
+		if ( ($which eq 'ALL') || ($which eq 'OTHERS') ) {
+			my $avoid = '';
+			if ( $which eq 'OTHERS' ) {
+				$avoid = $id;
+			}
+			# remove 'ALL:' or 'OTHERS:' (or specific ID)
+			foreach my $p ( Slim::Player::Client::clients() ) {
+				my $n = $p->name();
+				my $i = $p->id();
+				if ( ($n ne 'ALL') && ($n ne 'OTHERS') && ($i ne $avoid) ) {
+					$log->info("for client $id, prepare to execute \"".join('" "',@cmdArgs)."\" for $i/$n");
+					# add this player's object
+					push @clients, $p;
+				}
+			}
+		}
+		# by MAC address ( "00:04:20:11:22:33:" )
+		elsif ( $which =~ m/^[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}$/i ) {
+ 			my $c2 = Slim::Player::Client::getClient($which);
+			if ( defined($c2) ) {
+				$log->info("for client $id, prepare to execute \"".join('" "',@cmdArgs)."\" for $which");
+				push @clients, $c2;
+			} else {
+				$log->warn("for client $id, cannot execute \"".join('" "',@cmdArgs)."\" for $which -- client not found");
+			}
+		}
+		# by name? ( "Player Name:" )
+		else {
+			my $c2 = &getClientByName($which);
+			if (defined($c2) ) {
+				$log->info("for client $id, prepare to execute \"".join('" "',@cmdArgs)."\" for $which");
+				push @clients, $c2;
+			} else {
+				$log->warn("for client $id, cannot execute \"".join('" "',@cmdArgs)."\" for $which -- client not found");
+			}
+		}
+	}
+	return @clients;
+}
+
+
+# sub to handle quoted fields, e.g. 'playlist play "/path/with some spaces/playlist.m3u"'
+sub parseFields($) {
+        my $line = shift;
+	$line =~ s/^\s*//;
+	$line =~ s/\s*$//;
+	my @cooked = ();
+	my $in = 0;
+	my $quoted = 0;
+	my $escaped = 0;
+	my $i = 0;
+	my $word = '';
+	while ($i < length($line) ) {
+		my $c = substr($line,$i++,1);
+		$escaped = 0;
+		if ( $c eq "\\" ) {
+			$escaped = 1;
+			if ($i < (length($line) -1)) {
+				$c = substr($line,$i++,1);
+			} else {
+				# invalid escape!
+				$c = '';
+			}
+		}
+		if ( $in ) {
+			if ( $escaped ) {
+				$word .= $c;
+			} else {
+				# end of this word?
+				if ( ($quoted && ($c eq '"')) || ((!$quoted) && ($c =~ /\s/)) ) {
+					push @cooked, $word;
+					$word = '';
+					$in = 0;
+					$quoted = 0;
+				} else {
+					# build & keep moving
+					$word .= $c;
+				}
+			}
+		} else {
+			# look for delim
+			if ( $c eq '"' ) {
+				$quoted = 1;
+				$in = 1;
+			} elsif ( $c !~ /\s/ ) {
+				$quoted = 0;
+				$in = 1;
+				$word .= $c;
+			}
+		}
+	}
+	if ( $in ) { push @cooked, $word; }
 	return @cooked;
 }
+
+sub splitLines($$) {
+	my $macro = shift;
+	my $delim = shift;
+	my @ms;
+	my $line = '';
+	my $i = 0;
+	while ($i < length($macro) ) {
+		my $c = substr($macro,$i,1);
+		if ( $c eq "\\" ) {
+			if ($i < (length($macro) -1)) {
+				$c .= substr($macro,++$i,1);
+			} else {
+				# invalid escape!
+				$c = '';
+			}
+		} else {
+			if ($c eq $delim) {
+				push @ms, $line;
+				$line = '';
+				$c = '';
+			}
+		}
+		$line .= $c;
+		++$i;
+	}
+	if ($line ne '') {
+		push @ms, $line;
+	}
+	return @ms;
+}
+
+sub getClientByName($) {
+	my $name = shift;
+	my @players = Slim::Player::Client::clients();
+	foreach my $client ( @players ) {
+		if ( defined($client->name()) && ($name eq $client->name()) ) {
+			return $client;
+		}
+	}
+	return undef;
+}
+
+# --------------------------------------------- macro-parsing routines -------------------------------
 
 sub getButtonHash($) {
 	my $type = shift;
@@ -649,17 +768,6 @@ sub macroDumpCLI {
 	}
 	&dumpMacros();
 	$request->setStatusDone();
-}
-
-sub getClientByName($) {
-	my $name = shift;
-	my @players = Slim::Player::Client::clients();
-	foreach my $client ( @players ) {
-		if ( defined($client->name()) && ($name eq $client->name()) ) {
-			return $client;
-		}
-	}
-	return undef;
 }
 
 1;

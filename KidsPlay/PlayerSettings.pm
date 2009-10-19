@@ -58,8 +58,13 @@ sub handler {
  		$params->{'pw'}->{'pref_prefix'} = '';
  	}
  	$params->{'pw'}->{'jvc_style'} = '';
+ 	$params->{'pw'}->{'boom_style'} = '';
+	if ( ($client->model() ne 'baby') && (! $client->isa( "Slim::Player::Boom")) && (! $client->isa( "Slim::Player::Receiver")) ) {
+ 		$params->{'pw'}->{'boom_style'} = 'display: none;';
+	}
 	if ( $client->model() eq 'baby' ) {
  		$params->{'pw'}->{'jvc_style'} = 'display: none;';
+ 		$params->{'pw'}->{'rnote'} = $client->string('PLUGIN_KIDSPLAY_RADIO_NOTE');
 	}
 	### BUG -- validate prefs
 	return $class->SUPER::handler($client, $params);
