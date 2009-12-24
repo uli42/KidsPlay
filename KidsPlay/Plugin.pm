@@ -122,6 +122,7 @@ sub initPlugin {
 		Slim::Control::Request::addDispatch(['kidsplaytoggleclientpref','_prefname','_val1','_val2'], [1, 0, 0, \&toggleclientprefCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaymacro','_type', '_name', '_runall'], [1, 0, 0, \&macroCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaydumpmacros'], [0, 0, 0, \&macroDumpCLI]);
+		Slim::Control::Request::addDispatch(['kidsplaydumpplayermacros'], [1, 0, 0, \&playerMacroDumpCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaymacroset'], [0, 0, 0, undef]);
 		if ( substr($::VERSION,0,3) lt 7.4 ) {
 			Slim::Web::HTTP::protectCommand('kidsplayvolume');
@@ -144,12 +145,12 @@ sub initPlugin {
 	}
 	if (!$::noweb) {
 		require Plugins::KidsPlay::PlayerSettings;
-		require Plugins::KidsPlay::GlobalSettings;
+		#require Plugins::KidsPlay::GlobalSettings;
 		require Plugins::KidsPlay::Web;
 		# player settings
 		Plugins::KidsPlay::PlayerSettings->new();
 		# global settings (just a redir)
-		Plugins::KidsPlay::GlobalSettings->new();
+		#Plugins::KidsPlay::GlobalSettings->new();
 	}
 	# note that we should act
 	$pluginEnabled = 1;
@@ -200,7 +201,7 @@ sub macroCLI {
 	my $runall = $request->getParam('_runall');
 	# initialize client prefs
 	&initClientPrefs($client);
-	my $macro = &getMacro($name,$type);
+	my $macro = &getMacro($name,$type,$client);
 	if ( $macro =~ m/\S/ ) {
 		$log->debug("we have a macro for $type - $name ; executing");
 		&runMacro($client,$type,$name,$macro,$runall);
@@ -292,7 +293,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.38 $';
+	my $RcsVersion = '$Revision: 1.39 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -327,7 +328,7 @@ sub KidsPlay_jiveFavoritesCommand {
 		return &$originalJiveFavoritesCommand(@args);
 	}
 	my $buttoncode = 'preset_'.$key;
-	my $macro = &getMacro($buttoncode,$type);
+	my $macro = &getMacro($buttoncode,$type,$client);
 	if ( $macro =~ m/\S/ ) {
 		$log->debug("we have a macro for $type - $buttoncode");
 		&runMacro($client,$type,$buttoncode,$macro,1);
@@ -364,7 +365,7 @@ sub KidsPlay_buttonCommand {
 	if ( $pref eq 'PLUGIN_KIDSPLAY_CHOICE_NORMAL' ) {
 		return &$originalButtonCommand(@args);
 	}
-	my $macro = &getMacro($buttoncode,$type);
+	my $macro = &getMacro($buttoncode,$type,$client);
 	if ( $macro =~ m/\S/ ) {
 		$log->debug("we have a macro for $type - $buttoncode");
 		&runMacro($client,$type,$buttoncode,$macro,1);
@@ -428,7 +429,7 @@ sub KidsPlay_irCommand {
 		$log->info("client $id sent $type IR code for \"$codename\" (IR code $ircode)");
 	}
 	my $done = 0;
-	my $macro = &getMacro($codename,$type);
+	my $macro = &getMacro($codename,$type,$client);
 	if ( $macro =~ m/\S/ ) {
 		$log->debug("we have a macro for $type - $codename ; last execute $then last code $what now $now");
 		$done = 1;
@@ -449,7 +450,7 @@ sub runMacro($$$$$) {
 	my($client,$type,$codename,$macro,$runPrePost) = @_;
 	# pre-macro?
 	if ( $runPrePost ) {
-		my $macro2 = &getMacro('pre','KP');
+		my $macro2 = &getMacro('pre','KP',$client);
 		$macro2 =~ s/\;\s*$//s;
 		if ( $macro2 =~ m/\S/ ) {
 			&executeKidsPlay($client,'KP','pre',$macro2);
@@ -458,7 +459,7 @@ sub runMacro($$$$$) {
 	&executeKidsPlay($client,$type,$codename,$macro);
 	if ( $runPrePost ) {
 		# post-macro?
-		my $macro2 = &getMacro('post','KP');
+		my $macro2 = &getMacro('post','KP',$client);
 		$macro2 =~ s/\;\s*$//s;
 		if ( $macro2 =~ m/\S/ ) {
 			&executeKidsPlay($client,'KP','post',$macro2);
@@ -466,13 +467,21 @@ sub runMacro($$$$$) {
 	}
 }
 
-sub getMacro($$) {
-	my ($shortcode,$type) = @_;
-	# use global prefs for "macro-$type-$shortcode"
-	my $macro = $prefs->get("macro-$type-$shortcode");
+sub cleanMacro($) {
+	my $macro = shift;
 	$macro =~ s/^\s*//s;
 	$macro =~ s/\;?\s*$//s;
 	return $macro;
+}
+
+sub getMacro($$$) {
+	my ($shortcode,$type,$client) = @_;
+	# use global prefs for "macro-$type-$shortcode"
+	my $macro = &cleanMacro($prefs->client($client)->get("macro-$type-$shortcode"));
+	# use the player-specific macro if it is set
+	if ( $macro ne '' ) { return $macro; }
+	# otherwise grab the global macro
+	return &cleanMacro($prefs->get("macro-$type-$shortcode"));
 }
 
 sub initPrefs(){
@@ -750,13 +759,44 @@ sub getButtonHash($) {
 }
 
 sub dumpMacros() {
+	my $whichClient = shift;
+	my %info;
+	Slim::Control::Request::notifyFromArray($whichClient, ['kidsplaymacrosetbegin']);
 	foreach my $type (keys %supportedButtons) {
 		my $infoHashPtr = &getButtonHash($type);
 		foreach my $button (keys %$infoHashPtr) {
 			my $thisMacro = $prefs->get("macro-${type}-$button");
-			Slim::Control::Request::notifyFromArray(undef, ['kidsplaymacroset', $type, $button, $thisMacro])
+			if (! defined($whichClient) ) {
+				Slim::Control::Request::notifyFromArray(undef, ['kidsplaymacroset', $type, $button, $thisMacro]);
+			} else {
+				$info{"${type}\t${button}"} = $thisMacro;
+			}
+		}
+		# loop through players & dump override macros
+		my @players = Slim::Player::Client::clients();
+		if ( defined($whichClient) ) { @players = [ $whichClient ]; }
+		foreach my $client ( @players ) {
+			foreach my $button (keys %$infoHashPtr) {
+				my $thisMacro = $prefs->client($client)->get("macro-${type}-$button");
+				if ( $thisMacro =~ m/\S/ ) {
+					# has non-whitespace (something is here)
+					if (! defined($whichClient) ) {
+						Slim::Control::Request::notifyFromArray($client, ['kidsplaymacroset', $type, $button, $thisMacro]);
+					} else {
+						# overrides global
+						$info{"${type}\t${button}"} = $thisMacro;
+					}
+				}
+			}
 		}
 	}
+	if ( defined($whichClient) ) {
+		foreach my $k (keys %info) {
+			my ($type,$button) = split(/\t/,$k);
+			Slim::Control::Request::notifyFromArray($whichClient, ['kidsplaymacroset', $type, $button, $info{$k}]);
+		}
+	}
+	Slim::Control::Request::notifyFromArray($whichClient, ['kidsplaymacrosetend']);
 }
 
 sub macroDumpCLI {
@@ -767,6 +807,18 @@ sub macroDumpCLI {
 		return;
 	}
 	&dumpMacros();
+	$request->setStatusDone();
+}
+
+sub playerMacroDumpCLI {
+        my $request = shift;
+	# check this is the correct command.
+	if ($request->isNotCommand([['kidsplaydumpplayermacros']])) {
+		$request->setStatusBadDispatch();
+		return;
+	}
+	my $client = $request->client();
+	&dumpMacros($client);
 	$request->setStatusDone();
 }
 

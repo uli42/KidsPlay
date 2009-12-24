@@ -34,6 +34,9 @@ if ( p != null ) {
 <!-- the table is wrapped in a FORM to allow actions -->
 <form action="global.html" method="POST">
 
+[% kidsplay.header %]
+[% kidsplay.headerinfo %]
+
 [% kidsplay.message %]
 
 <!-- hidden vars to carry with Save requests -->
@@ -50,6 +53,7 @@ if ( p != null ) {
 [% kidsplay.macro %]
 
 <span id="KP_save" style="display: none;">
+<input type="hidden" name="KP_scope" value="[% KP_scope %]" />
 <input type="submit" name="KP_action" value="[% "SAVE" | string %]" />
 </span>
 

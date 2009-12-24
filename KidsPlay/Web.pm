@@ -33,6 +33,20 @@ sub handleWeb {
 	my ($client, $params) = @_;
 	# update macro
 	$params->{'kidsplay'}->{'message'} = '';
+	$params->{'kidsplay'}->{'header'} = "<h2>".string('KIDSPLAY_MACROS_GLOBAL').'</h2>';
+	$params->{'kidsplay'}->{'headerinfo'} = "<p>".string('KIDSPLAY_MACROS_GLOBAL_INFO').'</p>';
+	my $whichScope = $kpPrefs;
+	my $client = undef;
+	if ( defined($params->{KP_scope}) && ($params->{KP_scope} =~ m/\S/) ) {
+		# set client
+		$client = Slim::Player::Client::getClient($params->{KP_scope});
+		# set $whichScope
+		$whichScope = $kpPrefs->client($client);
+		$params->{'kidsplay'}->{'header'} = "<h2>".string('KIDSPLAY_MACROS_PER_PLAYER').$client->name().'</h2>';
+		$params->{'kidsplay'}->{'headerinfo'} = "<p>".string('KIDSPLAY_MACROS_PER_PLAYER_INFO').'</p>';
+	} else {
+		$params->{'KP_scope'} = '';
+	}
 	if ( defined($params->{KP_action}) ) {
 		# loop through $params, look for "m-*-*"
 		# check current pref value, set() if diff
@@ -40,13 +54,16 @@ sub handleWeb {
 		foreach my $k (keys %$params) {
 			if ( $k =~ m/^m\-(Boom|Radio|Receiver|JVC|KP)\-(.*)$/ ) {
 				my ($type,$button) = ($1,$2);
-				my $thisMacro = $kpPrefs->get("macro-${type}-$button");
+				my $thisMacro = $whichScope->get("macro-${type}-$button");
 				if ( $thisMacro ne $params->{$k} ) {
-					$kpPrefs->set("macro-${type}-$button",$params->{$k});
-					Slim::Control::Request::notifyFromArray(undef, ['kidsplaymacroset', $type, $button, $params->{$k}]);
+					$whichScope->set("macro-${type}-$button",$params->{$k});
+					Slim::Control::Request::notifyFromArray($client, ['kidsplaymacroset', $type, $button, $params->{$k}]);
 					++$u;
 				}
-			}
+			} elsif ( $k =~ m/^l\-(Boom|Radio|Receiver|JVC|KP)\-(.*)$/ ) {
+				my ($type,$button) = ($1,$2);
+				$whichScope->set("macro-label-${type}-$button",$params->{$k});
+			} 
 		}
 		if ( $u > 0 ) {
 			$params->{'kidsplay'}->{'message'} = "<p>$u ".string('KIDSPLAY_MACROS_UPDATED').'</p>';
@@ -57,13 +74,52 @@ sub handleWeb {
 	$params->{'kidsplay'}->{'macrooptions'} = '';
 	$params->{'kidsplay'}->{'macro'} = '';
 	my $c = 0;
-	foreach my $type ( 'Boom', 'Radio', 'Receiver', 'JVC', 'KP' ) {
+	my @players = Slim::Player::Client::clients();
+	foreach my $type ( 'Boom', 'Receiver', 'Radio', 'JVC', 'KP' ) {
 		my $hashPtr = Plugins::KidsPlay::Plugin::getButtonHash($type);
 		foreach my $k (sort keys %$hashPtr) {
-			$params->{'kidsplay'}->{'macrooptions'} .= "<option value=\"$c\">$type - ".&escape_html($hashPtr->{$k})."</option>\n";
-			$params->{'kidsplay'}->{'macro'} .= "<span id=\"KP_s-$c\" style=\"display: none;\">$type - ".&escape_html($hashPtr->{$k})."\n";
+			my $thisLabel = $whichScope->get("macro-label-${type}-$k");
+			my $thisMacro = $whichScope->get("macro-${type}-$k");
+			my $setIndicator = '';
+			if ( $thisMacro  =~ m/\S/ ) { $setIndicator = ' * '; }
+			my $labelString = '';
+			if ( $thisLabel =~ m/\S/ ) { 
+				$labelString = " - ".$thisLabel; 
+				$setIndicator = '';
+			}
+			# use tooltip to make other macros or global macro visible
+			my $others = '';
+			my $otherIndicator = '';
+			my $otherString = '';
+			if ( $params->{'KP_scope'} eq '' ) {
+				# do any players override this? (loop through @players)
+				foreach my $p ( @players ) {
+					my $m = Plugins::KidsPlay::Plugin::cleanMacro($kpPrefs->client($p)->get("macro-${type}-$k",$params->{$k}));
+					if ( $m ne '' ) {
+						$others .= "<a title=\"".&escape_html($m)."\">".$p->name()."</a>, ";
+					}
+				}
+				if ( $others ne '' ) {
+					$others =~ s/, $//;
+					$otherString = "<br />".string('KIDSPLAY_MACROS_EXIST_FOR').$others."\n";
+					$otherIndicator = '+';
+				}
+			} else {
+				# is there a global macro for this?
+				my $m = Plugins::KidsPlay::Plugin::cleanMacro($kpPrefs->get("macro-${type}-$k",$params->{$k}));
+				if ( $m ne '' ) {
+					$others .= "<a title=\"".&escape_html($m)."\">".string('KIDSPLAY_ALL_PLAYERS')."</a>, ";
+					$otherString = "<br />".string('KIDSPLAY_MACROS_EXIST_FOR').$others."\n";
+					$otherIndicator = '+';
+				}
+			}
+			$params->{'kidsplay'}->{'macrooptions'} .= "<option value=\"$c\">$type - ".&escape_html($hashPtr->{$k}).$otherIndicator.$setIndicator.&escape_html($labelString)."</option>\n";
+			#$params->{'kidsplay'}->{'macro'} .= "<span id=\"KP_s-$c\" style=\"display: none;\">$type - ".&escape_html($hashPtr->{$k})."\n";
+			$params->{'kidsplay'}->{'macro'} .= "<span id=\"KP_s-$c\" style=\"display: none;\">";
+			$params->{'kidsplay'}->{'macro'} .= $otherString;
+			$params->{'kidsplay'}->{'macro'} .= "<br />".&escape_html(string('DESCRIPTION')).": <input size=\"15\" id=\"l-$type-$k\" name=\"l-$type-$k\" value=\"".&escape_html($thisLabel)."\">";
 			$params->{'kidsplay'}->{'macro'} .= "<br /><textarea cols=\"60\" rows=\"5\" id=\"m-$type-$k\" name=\"m-$type-$k\">";
-			my $thisMacro = $kpPrefs->get("macro-${type}-$k");
+			my $thisMacro = $whichScope->get("macro-${type}-$k");
 			$params->{'kidsplay'}->{'macro'} .= &escape_html($thisMacro);
 			$params->{'kidsplay'}->{'macro'} .= "</textarea>\n";
 			$params->{'kidsplay'}->{'macro'} .= "<br /></span>\n";
