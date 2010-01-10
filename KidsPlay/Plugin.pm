@@ -1,4 +1,4 @@
-# KidsPlay copyright (c) 2008-2009 by Peter Watkins (peterw@tux.org) 
+# KidsPlay copyright (c) 2008-2010 by Peter Watkins (peterw@tux.org) 
 # All Rights Reserved
 #
 # This program is free software; you can redistribute it and/or
@@ -293,7 +293,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.39 $';
+	my $RcsVersion = '$Revision: 1.40 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -583,7 +583,7 @@ sub getCommands($$) {
 	my @commands;
 	my @ms = &splitLines($macro,";");
 	foreach my $m (@ms) {
-		my @fields = &parseFields($m);
+		my @fields = &parseFields($m,$client);
 		my @forWhom = &makePlayerList($client,\@fields);
 		push @fields, $client;	# who invoked
 		if ( scalar(@forWhom) > 0 )  {
@@ -653,92 +653,6 @@ sub makePlayerList($$) {
 	return @clients;
 }
 
-
-# sub to handle quoted fields, e.g. 'playlist play "/path/with some spaces/playlist.m3u"'
-sub parseFields($) {
-        my $line = shift;
-	$line =~ s/^\s*//;
-	$line =~ s/\s*$//;
-	my @cooked = ();
-	my $in = 0;
-	my $quoted = 0;
-	my $escaped = 0;
-	my $i = 0;
-	my $word = '';
-	while ($i < length($line) ) {
-		my $c = substr($line,$i++,1);
-		$escaped = 0;
-		if ( $c eq "\\" ) {
-			$escaped = 1;
-			if ($i < (length($line) -1)) {
-				$c = substr($line,$i++,1);
-			} else {
-				# invalid escape!
-				$c = '';
-			}
-		}
-		if ( $in ) {
-			if ( $escaped ) {
-				$word .= $c;
-			} else {
-				# end of this word?
-				if ( ($quoted && ($c eq '"')) || ((!$quoted) && ($c =~ /\s/)) ) {
-					push @cooked, $word;
-					$word = '';
-					$in = 0;
-					$quoted = 0;
-				} else {
-					# build & keep moving
-					$word .= $c;
-				}
-			}
-		} else {
-			# look for delim
-			if ( $c eq '"' ) {
-				$quoted = 1;
-				$in = 1;
-			} elsif ( $c !~ /\s/ ) {
-				$quoted = 0;
-				$in = 1;
-				$word .= $c;
-			}
-		}
-	}
-	if ( $in ) { push @cooked, $word; }
-	return @cooked;
-}
-
-sub splitLines($$) {
-	my $macro = shift;
-	my $delim = shift;
-	my @ms;
-	my $line = '';
-	my $i = 0;
-	while ($i < length($macro) ) {
-		my $c = substr($macro,$i,1);
-		if ( $c eq "\\" ) {
-			if ($i < (length($macro) -1)) {
-				$c .= substr($macro,++$i,1);
-			} else {
-				# invalid escape!
-				$c = '';
-			}
-		} else {
-			if ($c eq $delim) {
-				push @ms, $line;
-				$line = '';
-				$c = '';
-			}
-		}
-		$line .= $c;
-		++$i;
-	}
-	if ($line ne '') {
-		push @ms, $line;
-	}
-	return @ms;
-}
-
 sub getClientByName($) {
 	my $name = shift;
 	my @players = Slim::Player::Client::clients();
@@ -751,7 +665,6 @@ sub getClientByName($) {
 }
 
 # --------------------------------------------- macro-parsing routines -------------------------------
-
 sub getButtonHash($) {
 	my $type = shift;
 	my $hashPtr = $supportedButtons{$type};
@@ -821,6 +734,155 @@ sub playerMacroDumpCLI {
 	&dumpMacros($client);
 	$request->setStatusDone();
 }
+# --------------------------------------------- macro-parsing routines -------------------------------
+
+
+# ------------------------------------------------  CLI parsing routines ---------------------------------------
+# sub to handle quoted fields, e.g. 'playlist play "/path/with some spaces/playlist.m3u"'
+sub parseFields($$) {
+        my ($line,$client) = @_;
+	# certain characters should be escaped with a \ :
+	# 	\ ; " [ ] { }
+	# if the \ char is followed by any other char,
+	# \ and the char following are interpreted as 2 chars
+	my $specialC = "\\;\"\[\]\{\}";
+	$line =~ s/^\s*//;
+	$line =~ s/\s*$//;
+	my @cooked = ();
+	my $in = 0;
+	my $quoted = 0;
+	my $escaped = 0;
+	my $i = 0;
+	my $word = '';
+	while ($i < length($line) ) {
+		my $c = substr($line,$i++,1);
+		$escaped = 0;
+		if ( $c eq "\\" ) {
+			$escaped = 1;
+			if ($i < (length($line) -1)) {
+				my $c2 = substr($line,$i++,1);
+				if (index($specialC,$c2) > -1) {
+					$c = $c2;
+				} else {
+					--$i;
+					$escaped = 0;
+				}
+
+			} else {
+				# just a \
+			}
+		}
+		if ( $in ) {
+			if ( $escaped ) {
+				$word .= $c;
+			} else {
+				# end of this word?
+				if ( ($quoted && ($c eq '"')) || ((!$quoted) && ($c =~ /\s/)) ) {
+					push @cooked, $word;
+					$word = '';
+					$in = 0;
+					$quoted = 0;
+				} else {
+					# variable subst
+					if ( $c eq '{' ) {
+						# find the end of {this}
+						my $end = index($line,'}',$i);
+						if ( $end > $i ) {
+							my $diff = $end - $i;
+							# get the substitution
+							my $varname = substr($line,$i,$diff);
+							my $replace = &replaceVariable($varname,$client);
+							# increment $i
+							$i += $diff;
+							++$i;
+							# append subst to $word
+							$word .= $replace;
+						} else {
+							$word .= $c;
+						}
+					} else {
+						# build & keep moving
+						$word .= $c;
+					}
+				}
+			}
+		} else {
+			# look for delim
+			if ( $c eq '"' ) {
+				$quoted = 1;
+				$in = 1;
+			} elsif ( $c !~ /\s/ ) {
+				$quoted = 0;
+				$in = 1;
+				--$i;		# move back and try again
+				#$word .= $c;
+			}
+		}
+	}
+	if ( $in ) { push @cooked, $word; }
+	return @cooked;
+}
+
+sub splitLines($$) {
+	my $macro = shift;
+	my $delim = shift;
+	my @ms;
+	my $line = '';
+	my $i = 0;
+	while ($i < length($macro) ) {
+		my $c = substr($macro,$i,1);
+		if ( $c eq "\\" ) {
+			if ($i < (length($macro) -1)) {
+				$c .= substr($macro,++$i,1);
+			} else {
+				# invalid escape!
+				$c = '';
+			}
+		} else {
+			if ($c eq $delim) {
+				push @ms, $line;
+				$line = '';
+				$c = '';
+			}
+		}
+		$line .= $c;
+		++$i;
+	}
+	if ($line ne '') {
+		push @ms, $line;
+	}
+	return @ms;
+}
+
+sub replaceVariable($$) {
+	my ($name,$client) = @_;
+	if (! defined($::VERSION) ) {
+		if ( $name eq 'PLAYER_NAME' ) { return 'Master Bedroom'; }
+		return "\$$name";
+	}
+	# actual logic for SC/SBS
+	if ( $name eq 'PLAYER_NAME' ) { return $client->name(); }
+	if ( $name eq 'PLAYER_ID' ) { return $client->id(); }
+	if ( $name =~ m/^CURRENT_TRACK_/ ) {
+		my $song = Slim::Player::Playlist::song($client);
+		if ( $name eq 'CURRENT_TRACK_ALBUM' ) {
+			return defined($song->album()) ? ( ref $song->album() ? $song->album()->name() : $song->album() ) : '';
+		}
+		if ( $name eq 'CURRENT_TRACK_ARTIST' ) {
+        		return defined($song->artist()) ? ( ref $song->artist() ? $song->artist()->name(): $song->artist() ) : '';
+		}
+		if ( $name eq 'CURRENT_TRACK_TITLE' ) {
+        		#return $song->name() || $song->{title} || $song->{desc} || '';
+        		return $song->name() || $song->{title} || '';
+		}
+		if ( $name eq 'CURRENT_TRACK_ID' ) {
+        		return $song->id() || '' ;
+		}
+	}
+	return '';
+}
+# ------------------------------------------------  CLI parsing routines ---------------------------------------
+
 
 1;
 

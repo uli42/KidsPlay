@@ -30,7 +30,12 @@ if ( p != null ) {
 	p.selectedIndex = 0;
 }
 </script>
+<style type="text/css">
 
+dt.KPlist { font-weight: bold; }
+dd.KPlist { margin-left: 15px; }
+
+</style>
 <!-- the table is wrapped in a FORM to allow actions -->
 <form action="global.html" method="POST">
 
@@ -75,39 +80,75 @@ player where you pressed the button, insert 'OTHERS:', e.g.
 'OTHERS: power 1'.
 </p>
 
+<p><a href="#" onClick="javascript:KP_toggleVisibility('KP_variables');">Special characters and variables</a></p>
+<span id="KP_variables" style="display: none;">
+<p>There are seven characters that must be escaped with a backslash in your macros:
+<br />\ (backslash) ; (semicolon) " (double quotation mark) [ ] (open and close square brackets) { } (open and close curly braces)
+<br />For example, if you wanted to display <b>Hello, "Bob"</b> on a Squeezebox, you would use a
+command like <nobr><code>display "Hello \"Bob\""</code></nobr>
+</p>
+<p>If you use a backslash before any other character, then the two characters
+will be treated as separate characters -- this means that Windows directory
+paths like <b>c:\windows</b> can be entered as <code>c:\\windows</code>
+or <code>c:\windows</code>
+</p>
+<p>KidsPlay also understands a few special variable names. Variables are enclosed in curly braces
+and are interpreted in the context of the Squeezebox where the button was pressed. For instance,
+<nobr><code>ALL: display "{CURRENT_TRACK_TITLE} is playing on {PLAYER_NAME}"</code></nobr>
+would display a message like "Veronique is playing on Kitchen Boom" on all players.
+The following variables are supported:
+</p>
+<dl class="KPlist">
+<dt>PLAYER_NAME
+<dd class="KPlist">Name of the player where the button was pressed
+<dt>PLAYER_ID
+<dd class="KPlist">ID (MAC address) of the player where the button was pressed
+<dt>CURRENT_TRACK_ALBUM
+<dd class="KPlist">Album for the current track on the player where the button was pressed
+<dt>CURRENT_TRACK_ARTIST
+<dd class="KPlist">Artist for the current track on the player where the button was pressed
+<dt>CURRENT_TRACK_TITLE
+<dd class="KPlist">Song title for the current track on the player where the button was pressed
+<dt>CURRENT_TRACK_ID
+<dd class="KPlist">Database ID number for the current track on the player where the button was pressed
+</dl>
+</span>
+
 <p><a href="#" onClick="javascript:KP_toggleVisibility('KP_samples');">Sample macros</a></p>
 <span id="KP_samples" style="display: none;">
-<dl>
-<dt>Play a specific playlist
-<dd>power 1; stop; playlist clear; mixer volume 30; playlist play PlayListName;
+<dl class="KPlist">
+<dt>Play a specific regular playlist
+<dd class="KPlist">power 1; stop; playlist clear; mixer volume 30; playlist play "Playlist Name";
+<dt>Play a specific iTunes playlist (note that " " becomes "%20", as the "itunesplaylist:" argument should itself look like a URL)
+<dd class="KPlist">power 1; stop; playlist clear; mixer volume 30; playlist play "itunesplaylist:Playlist%20Name";
 <dt>Random mix from one genre
-<dd>power 1; stop; playlist clear; mixer volume 30; randomplaygenreselectall 0; randomplaychoosegenre GenreName 1; randomplay tracks;
+<dd class="KPlist">power 1; stop; playlist clear; mixer volume 30; randomplaygenreselectall 0; randomplaychoosegenre GenreName 1; randomplay tracks;
 <dt>Play a specific album
-<dd>power 1; stop; playlist clear; mixer volume 30; playlist play "/path/to/album/directory"
+<dd class="KPlist">power 1; stop; playlist clear; mixer volume 30; playlist play "/path/to/album/directory"
 <dt>Display a message
-<dd>show "line1:KidsPlay test" "line2:Your message here" duration:5 centered:1
+<dd class="KPlist">show "line1:KidsPlay test" "line2:Your message here" duration:5 centered:1
 <dt>Display a large message
-<dd>show font:huge "line2:Your message here" duration:5 centered:1
+<dd class="KPlist">show font:huge "line2:Your message here" duration:5 centered:1
 <dt>Set volume to a fixed level
-<dd>mixer volume 45;
+<dd class="KPlist">mixer volume 45;
 <br />OR
 <br />
 kidsplayvolume 45
 <dt>Increase volume by 5, but not greater than player's KidsPlay max
-<dd>kidsplayvolume +5
+<dd class="KPlist">kidsplayvolume +5
 <dt>Decrease volume by 5, but not less than player's KidsPlay min
-<dd>kidsplayvolume -5
+<dd class="KPlist">kidsplayvolume -5
 <dt>Set volume to player's KidsPlay minimum
-<dd>kidsplayvolume 0
+<dd class="KPlist">kidsplayvolume 0
 <dt>Toggle between two values (3 = Always Off, 0 = Headphones) for a Boom's analogOutMode pref 
 (this command currently only supports switching between two values)
-<dd>kidsplaytoggleclientpref analogOutMode 3 0
+<dd class="KPlist">kidsplaytoggleclientpref analogOutMode 3 0
 <dt>Turn the player named "Living Room" off (note the space and quotation marks)</dt>
-<dd>"Living Room:" power 0</dd>
+<dd class="KPlist">"Living Room:" power 0</dd>
 <dt>Turn all players off</dt>
-<dd>ALL: power 0</dd>
+<dd class="KPlist">ALL: power 0</dd>
 <dt>Turn all <b>other</b> players off but leave this one alone</dt>
-<dd>OTHERS: power 0</dd>
+<dd class="KPlist">OTHERS: power 0</dd>
 </dl>
 </span>
 
