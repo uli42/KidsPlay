@@ -16,6 +16,9 @@ use Slim::Utils::Prefs;
 
 # ---------------------- settings ----------------------------
 my $minWait = 2.5;	# don't act if 'ir' command fired less than $minWait seconds after last command
+# protection for 'kidsplayexec' CLI command
+my $execRequiresCRSFProtection = 1;		# at least "medium" level
+my $execRequiresPasswordProtection = 1;
 # ---------------------- settings ----------------------------
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -124,7 +127,9 @@ sub initPlugin {
 		Slim::Control::Request::addDispatch(['kidsplaydumpmacros'], [0, 0, 0, \&macroDumpCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaydumpplayermacros'], [1, 0, 0, \&playerMacroDumpCLI]);
 		Slim::Control::Request::addDispatch(['kidsplaymacroset'], [0, 0, 0, undef]);
+		Slim::Control::Request::addDispatch(['kidsplayexec'], [0, 0, 0, \&execCLI]);
 		if ( substr($::VERSION,0,3) lt 7.4 ) {
+			Slim::Web::HTTP::protectCommand('kidsplayexec');
 			Slim::Web::HTTP::protectCommand('kidsplayvolume');
 			Slim::Web::HTTP::protectCommand('kidsplaytoggleclientpref');
 			Slim::Web::HTTP::protectCommand('kidsplaymacro');
@@ -134,6 +139,7 @@ sub initPlugin {
 			Slim::Web::Pages->addPageLinks('plugins', { 'PLUGIN_KIDSPLAY_BASIC_SETTINGS' => 'plugins/KidsPlay/settings/global.html' });
 		} else {
 			if (!$::noweb) {
+				Slim::Web::HTTP::CSRF->protectCommand('kidsplayexec'); 
 				Slim::Web::HTTP::CSRF->protectCommand('kidsplayvolume'); 
 				Slim::Web::HTTP::CSRF->protectCommand('kidsplaytoggleclientpref'); 
 				Slim::Web::HTTP::CSRF->protectCommand('kidsplaymacro'); 
@@ -186,6 +192,68 @@ sub toggleclientprefCLI {
 	}
 	$request->setStatusDone();
 }
+
+sub execCLI {
+        my $request = shift;
+	# check this is the correct command.
+	if ($request->isNotCommand([['kidsplayexec']])) {
+		$request->setStatusBadDispatch();
+		return;
+	}
+	my $execEnabled = $prefs->get("execEnabled");
+	if (! &secretFileExists() ) {
+		$log->warn("security: you must explicitly create a file named \"".&secretFileName()."\" on your server to use kidsplayexec");
+		$request->setStatusBadDispatch();
+		return;
+	}
+	# bail if no CSRF protection or not password protected
+	if ( $execRequiresCRSFProtection ) {
+		my $csrfProtection = $serverPrefs->get('csrfProtectionLevel');
+		if ( $csrfProtection < 1 ) {
+			$log->warn("security: you must set the CRSF Protection Level to Medium or High in order to use kidsplayexec");
+			$request->setStatusBadDispatch();
+			return;
+		}
+	}
+	if ( $execRequiresPasswordProtection ) {
+		my $passwordRequired = $serverPrefs->get('authorize');
+		if ( $passwordRequired != 1 ) {
+			$log->warn("security: you must require username/password authorization in order to use kidsplayexec");
+			$request->setStatusBadDispatch();
+			return;
+		}
+	}
+	# get the parameters
+	my $client = $request->client();
+	my $val = $request->getParam('_p1');
+	if ( (!defined($val)) || ($val ne $prefs->get("execSecret")) ) {
+		$log->warn("security: incorrect secret value passed to kidsplayexec");
+		$request->setStatusBadDispatch();
+		return;
+	}
+	my @sysargs = ();
+	my $n = 2;
+	while ($n > 0) {
+		my $val = $request->getParam('_p'.$n);
+		if ( defined($val) ) {
+			push @sysargs, $val;
+			++$n;
+		} else {
+			$n = -1;
+		}
+	}
+	if ( scalar(@sysargs) < 2 ) {
+		$log->warn("kidsplayexec needs the proper secret and at least one command argument");
+		$request->setStatusBadDispatch();
+		return;
+	}
+	# invoke the command
+	$log->debug("kidsplayexec executing ".join("\t",@sysargs));
+	my $rc = system(@sysargs);
+	$request->addResult('exitval',$rc);
+	$request->setStatusDone();
+}
+
 
 sub macroCLI {
         my $request = shift;
@@ -293,7 +361,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.40 $';
+	my $RcsVersion = '$Revision: 1.44 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -484,6 +552,25 @@ sub getMacro($$$) {
 	return &cleanMacro($prefs->get("macro-$type-$shortcode"));
 }
 
+sub setExecSecret() {
+	my $s = 10000000 + int(rand(89999999));
+	$prefs->set("execSecret",$s);
+}
+
+sub secretFileName() {
+	if ($^O =~ m/Win32/) {
+		return 'c:\kidsplayexec.txt';
+	}
+	return '/kidsplayexec.txt';
+}
+
+sub secretFileExists() {
+	if ( -f &secretFileName() ) {
+		return 1;
+	}
+	return 0;
+}
+
 sub initPrefs(){
 	my $waitJVC = $prefs->get("waitJVC");
 	if ( (!defined($waitJVC)) || ($waitJVC eq '') ) {
@@ -497,6 +584,14 @@ sub initPrefs(){
 	my $waitRadio= $prefs->get("waitRadio");
 	if ( (!defined($waitRadio)) || ($waitRadio eq '') ) {
 		$prefs->set("waitRadio",$minWait);
+	}
+	my $execEnabled = $prefs->get("execEnabled");
+	if ( (!defined($execEnabled)) || ($execEnabled eq '') ) {
+		$prefs->set("execEnabled",0);
+	}
+	my $execSecret = $prefs->get("execSecret");
+	if ( (!defined($execSecret)) || ($execSecret eq '') ) {
+		&setExecSecret();
 	}
 }
 
@@ -882,7 +977,6 @@ sub replaceVariable($$) {
 	return '';
 }
 # ------------------------------------------------  CLI parsing routines ---------------------------------------
-
 
 1;
 

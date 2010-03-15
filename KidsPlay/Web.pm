@@ -70,6 +70,11 @@ sub handleWeb {
 		}
 	}
 
+	$params->{'kidsplay'}->{'execStatus'} = string('DISABLED')." You must create a file named \"".Plugins::KidsPlay::Plugin::secretFileName()."\" on your server in order to use kidsplayexec.";
+	if ( Plugins::KidsPlay::Plugin::secretFileExists() ) {
+		$params->{'kidsplay'}->{'execStatus'} = string('ENABLED')." Your SECRET value is ".$kpPrefs->get('execSecret');
+	}
+
 	# list of buttons
 	$params->{'kidsplay'}->{'macrooptions'} = '';
 	$params->{'kidsplay'}->{'macro'} = '';
