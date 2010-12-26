@@ -242,7 +242,7 @@ sub execCLI {
 			$n = -1;
 		}
 	}
-	if ( scalar(@sysargs) < 2 ) {
+	if ( scalar(@sysargs) < 1 ) {
 		$log->warn("kidsplayexec needs the proper secret and at least one command argument");
 		$request->setStatusBadDispatch();
 		return;
@@ -250,6 +250,7 @@ sub execCLI {
 	# invoke the command
 	$log->debug("kidsplayexec executing ".join("\t",@sysargs));
 	my $rc = system(@sysargs);
+	$log->debug("kidsplayexec exitval: $rc");
 	$request->addResult('exitval',$rc);
 	$request->setStatusDone();
 }
@@ -361,7 +362,7 @@ sub enabled {
 }
 
 sub rcsVersion() {
-	my $RcsVersion = '$Revision: 1.44 $';
+	my $RcsVersion = '$Revision: 1.45 $';
 	$RcsVersion =~ s/.*:\s*([0-9\.]*).*$/$1/;
 	return $RcsVersion;
 }
@@ -468,7 +469,7 @@ sub KidsPlay_irCommand {
 	# Receiver: up=00020017, down=00010017
 	if ( $ircode =~ m/^0000/) {
 		$type = 'JVC';
-	} elsif ( $ircode =~ m/^000[12]002[0-5]/) {
+	} elsif ( $ircode =~ m/^000[12]002[0-8]/) {
 		$type = 'Boom';
 	} elsif ( ($ircode =~ m/^000[12]0017/) && $client->isa( "Slim::Player::Receiver") ) {
 		$type = 'Receiver';
