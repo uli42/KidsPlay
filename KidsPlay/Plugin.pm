@@ -31,6 +31,9 @@ my $log = Slim::Utils::Log->addLogCategory({
 my $prefs = preferences('plugin.KidsPlay');
 my $serverPrefs = preferences('server');
 
+# count how often a button has been pressed (for round-robin command cycling per button)
+my %buttonCounters = ();
+
 use vars qw($VERSION);
 $VERSION = &rcsVersion();
 
@@ -543,7 +546,7 @@ sub cleanMacro($) {
 	return $macro;
 }
 
-sub getMacro($$$) {
+sub getMacro1($$$) {
 	my ($shortcode,$type,$client) = @_;
 	# use global prefs for "macro-$type-$shortcode"
 	my $macro = &cleanMacro($prefs->client($client)->get("macro-$type-$shortcode"));
@@ -552,6 +555,47 @@ sub getMacro($$$) {
 	# otherwise grab the global macro
 	return &cleanMacro($prefs->get("macro-$type-$shortcode"));
 }
+
+sub getMacro($$$) {
+        my ($shortcode,$type,$client) = @_;
+        # use original for KP macros
+	$log->debug("called for macro-$type-$shortcode\n");
+        if ($type eq "KP") {
+           return &getMacro1($shortcode,$type,$client);
+        }
+
+        my $macro = &cleanMacro($prefs->client($client)->get("macro-$type-$shortcode"));
+	if ($macro ne '') {
+	    my @entries = split /\r\n---\r\n/, $macro;
+
+	    my $count = $buttonCounters{"macro-$type-$shortcode"};
+	    $log->debug("count for macro-$type-$shortcode is '$count'\n");
+	    if ( $count eq '' ) {
+		$count = 0;
+	    } else {
+		$count = $count + 1;
+	    }
+
+	    if ($count > $#entries ) {
+		$count = 0;
+	    }
+
+	    $buttonCounters{"macro-$type-$shortcode"} = $count;
+	    $log->debug("stored count=$count for macro-$type-$shortcode\n");
+
+	    $macro = $entries[$count];
+	    $log->debug("read macro $macro\n");
+	    return $macro;
+        }
+
+	$log->debug("trying global macro\n");
+        # use the player-specific macro if it is set
+        # otherwise grab the global macro
+        # we do not support round-robin for global setting currently
+	$log->debug("reading macro-$type-$shortcode\n");
+        return &cleanMacro($prefs->get("macro-$type-$shortcode"));
+}
+
 
 sub setExecSecret() {
 	my $s = 10000000 + int(rand(89999999));
