@@ -5,7 +5,7 @@ PLUGIN_KIDSPLAY_DESC
 	EN	Have SqueezeCenter execute specific sets of commands for certain buttons, so you can give a child a remote control with limited function, or redefine Boom or Radio 1-6 preset buttons or the button on a Squeezebox Receiver. (Boom, Classic, Radio, Receiver, Slimp3, Squeezebox1, Transporter)
 
 PLUGIN_KIDSPLAY_REPO_DESC
-	EN	2.6.2: fixes for Boom with SBS 7.5.2; 2.6.1: kidsplayexec: allow commands without additional arguments; 2.6.0: kidsplayexec CLI command; 2.5.0: variables for better TrackStat integration, other uses; 2.4.0: per-player macros that override global defaults possible, better UI for setting macros; 2.3.0: support for remapping Radio buttons; 2.2.0: can specify a specific player to run a command on, or all players, or every *other* player
+	EN	2.6.3: extend readme, no functional change; 2.6.2: fixes for Boom with SBS 7.5.2; 2.6.1: kidsplayexec: allow commands without additional arguments; 2.6.0: kidsplayexec CLI command; 2.5.0: variables for better TrackStat integration, other uses; 2.4.0: per-player macros that override global defaults possible, better UI for setting macros; 2.3.0: support for remapping Radio buttons; 2.2.0: can specify a specific player to run a command on, or all players, or every *other* player
 
 DEBUG_PLUGIN_KIDSPLAY
 	EN	KidsPlay
